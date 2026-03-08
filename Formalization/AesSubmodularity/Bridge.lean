@@ -557,6 +557,23 @@ theorem indicatorAESClosedForm_pos_of_bddAbove
     indicatorAESClosedForm_lowerBound_of_bddAbove (g := g) hc ht0 ht1 hgnonneg hg
   linarith
 
+/-- Nonnegative penalties force the indicator-level AES closed form to stay below the payoff
+level `c`. -/
+theorem indicatorAESClosedForm_le_of_nonneg
+    (g : Level → ℝ) {c t : ℝ} (hc : 0 < c) (hgnonneg : ∀ p : Level, 0 ≤ g p) :
+    indicatorAESClosedForm g c t ≤ c := by
+  unfold indicatorAESClosedForm
+  refine csSup_le ?_ ?_
+  · exact ⟨indicatorESClosedForm c t 0 - g 0, ⟨0, rfl⟩⟩
+  · intro y hy
+    rcases hy with ⟨q, rfl⟩
+    by_cases hq : (q : ℝ) < 1
+    · simp [indicatorESClosedForm, hq]
+      have hmin_le : min 1 (t / (1 - (q : ℝ))) ≤ 1 := min_le_left _ _
+      nlinarith [hmin_le, hgnonneg q, hc]
+    · simp [indicatorESClosedForm, hq]
+      linarith [hgnonneg q]
+
 /-- The chosen AES indicator probability profile inherits the same strict positivity on `(0,1]`
 once it is identified with the closed form. -/
 theorem indicatorAESProbabilityProfile_pos_of_bddAbove
@@ -566,6 +583,15 @@ theorem indicatorAESProbabilityProfile_pos_of_bddAbove
     0 < indicatorAESProbabilityProfile P hsplit g c t := by
   rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
   exact indicatorAESClosedForm_pos_of_bddAbove (g := g) hc hcM ht0 ht1 hgnonneg hg
+
+/-- The chosen AES indicator probability profile inherits the same payoff upper bound on `(0,1]`
+once it is identified with the closed form. -/
+theorem indicatorAESProbabilityProfile_le_of_nonneg
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c t : ℝ} (hc : 0 < c)
+    (ht0 : 0 < t) (ht1 : t ≤ 1) (hgnonneg : ∀ p : Level, 0 ≤ g p) :
+    indicatorAESProbabilityProfile P hsplit g c t ≤ c := by
+  rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
+  exact indicatorAESClosedForm_le_of_nonneg (g := g) hc hgnonneg
 
 end EventProfiles
 
