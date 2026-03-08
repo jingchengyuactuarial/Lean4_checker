@@ -98,6 +98,99 @@ theorem not_eventually_le_ratio_nhdsWithin_zero_of_antitoneOn_above {φ : ℝ �
   have hmono := hanti htIoc ht1 (le_of_lt htt1)
   linarith
 
+/-- Along the dyadic sequence `t, t/2, t/4, ...`, the ratio `φ(t)/t` cannot decrease if `φ`
+satisfies the midpoint inequality on `[0,1]` and vanishes at the origin. -/
+theorem ratio_ge_at_dyadics_of_midpoint_zero {φ : ℝ → ℝ}
+    (hmid :
+      ∀ ⦃x y : ℝ⦄, x ∈ Set.Icc (0 : ℝ) 1 → y ∈ Set.Icc (0 : ℝ) 1 →
+        φ (midpoint ℝ x y) ≥ midpoint ℝ (φ x) (φ y))
+    (h0 : φ 0 = 0) {t : ℝ} (ht : t ∈ Set.Ioc (0 : ℝ) 1) :
+    ∀ n : ℕ, φ (t * ((1 / 2 : ℝ) ^ n)) / (t * ((1 / 2 : ℝ) ^ n)) ≥ φ t / t := by
+  intro n
+  let u : ℕ → ℝ := fun m => t * ((1 / 2 : ℝ) ^ m)
+  have hu_pos : ∀ m : ℕ, 0 < u m := by
+    intro m
+    dsimp [u]
+    exact mul_pos ht.1 (pow_pos (by norm_num : (0 : ℝ) < 1 / 2) _)
+  have hu_Icc : ∀ m : ℕ, u m ∈ Set.Icc (0 : ℝ) 1 := by
+    intro m
+    constructor
+    · exact (hu_pos m).le
+    · dsimp [u]
+      have hpow_le : ((1 / 2 : ℝ) ^ m) ≤ 1 := by
+        exact pow_le_one₀ (by norm_num) (by norm_num)
+      have hpow_nonneg : 0 ≤ ((1 / 2 : ℝ) ^ m) := by
+        exact pow_nonneg (by norm_num) m
+      have hmul_le : t * ((1 / 2 : ℝ) ^ m) ≤ 1 * ((1 / 2 : ℝ) ^ m) := by
+        exact mul_le_mul_of_nonneg_right ht.2 hpow_nonneg
+      have hle_one : 1 * ((1 / 2 : ℝ) ^ m) ≤ 1 := by simpa using hpow_le
+      exact le_trans hmul_le hle_one
+  have hu_succ : ∀ m : ℕ, u (m + 1) = midpoint ℝ 0 (u m) := by
+    intro m
+    dsimp [u]
+    rw [midpoint_eq_smul_add, invOf_eq_inv, smul_eq_mul]
+    ring_nf
+  have hstep : ∀ m : ℕ, φ (u (m + 1)) / u (m + 1) ≥ φ (u m) / u m := by
+    intro m
+    have hmid_m := hmid (show (0 : ℝ) ∈ Set.Icc (0 : ℝ) 1 by simp) (hu_Icc m)
+    rw [← hu_succ m, midpoint_eq_smul_add, invOf_eq_inv, smul_eq_mul, h0, zero_add] at hmid_m
+    have hu_ne : u m ≠ 0 := ne_of_gt (hu_pos m)
+    have hu_succ_eq : u (m + 1) = u m / 2 := by
+      rw [hu_succ m, midpoint_eq_smul_add, invOf_eq_inv, smul_eq_mul, zero_add]
+      ring
+    have hu_succ_pos : 0 < u (m + 1) := hu_pos (m + 1)
+    have hdiv :
+        (φ (u m) / 2) / (u (m + 1)) = φ (u m) / u m := by
+      rw [hu_succ_eq]
+      field_simp [hu_ne]
+    calc
+      φ (u m) / u m = (φ (u m) / 2) / (u (m + 1)) := hdiv.symm
+      _ ≤ φ (u (m + 1)) / (u (m + 1)) := by
+        have hmid_m' : φ (u m) / 2 ≤ φ (u (m + 1)) := by
+          simpa [div_eq_mul_inv, mul_comm] using hmid_m
+        exact div_le_div_of_nonneg_right hmid_m' hu_succ_pos.le
+  have hmono : ∀ m : ℕ, φ (u m) / u m ≥ φ (u 0) / u 0 := by
+    intro m
+    induction m with
+    | zero =>
+        rfl
+    | succ m ihm =>
+        exact le_trans ihm (hstep m)
+  simpa [u] using hmono n
+
+/-- A midpoint-concave profile with value `0` at the origin cannot stay eventually below `L`
+near the origin while taking a strictly larger ratio at some positive point. This avoids a full
+`ConcaveOn` upgrade in the infinite-left AES argument. -/
+theorem not_eventually_le_ratio_nhdsWithin_zero_of_midpoint_above {φ : ℝ → ℝ} {L t1 : ℝ}
+    (hmid :
+      ∀ ⦃x y : ℝ⦄, x ∈ Set.Icc (0 : ℝ) 1 → y ∈ Set.Icc (0 : ℝ) 1 →
+        φ (midpoint ℝ x y) ≥ midpoint ℝ (φ x) (φ y))
+    (h0 : φ 0 = 0) (ht1 : t1 ∈ Set.Ioc (0 : ℝ) 1)
+    (hgt : L < φ t1 / t1)
+    (hupper : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), φ t / t ≤ L) :
+    False := by
+  let u : ℕ → ℝ := fun n => t1 * ((1 / 2 : ℝ) ^ n)
+  have hu_nhds : Tendsto u atTop (nhds (0 : ℝ)) := by
+    have hpow : Tendsto (fun n : ℕ => ((1 / 2 : ℝ) ^ n)) atTop (nhds (0 : ℝ)) :=
+      tendsto_pow_atTop_nhds_zero_of_lt_one (by norm_num) (by norm_num)
+    simpa [u] using hpow.const_mul t1
+  have hu_pos : ∀ᶠ n in atTop, u n ∈ Set.Ioi (0 : ℝ) := by
+    refine Filter.Eventually.of_forall ?_
+    intro n
+    dsimp [u]
+    exact mul_pos ht1.1 (pow_pos (by norm_num : (0 : ℝ) < 1 / 2) _)
+  have hu_within : Tendsto u atTop (nhdsWithin (0 : ℝ) (Set.Ioi 0)) :=
+    tendsto_nhdsWithin_of_tendsto_nhds_of_eventually_within u hu_nhds hu_pos
+  have hu_upper : ∀ᶠ n in atTop, φ (u n) / u n ≤ L := hu_within.eventually hupper
+  have hu_lower : ∀ᶠ n in atTop, L < φ (u n) / u n := by
+    refine Filter.Eventually.of_forall ?_
+    intro n
+    have hratio :=
+      ratio_ge_at_dyadics_of_midpoint_zero hmid h0 ht1 n
+    exact lt_of_lt_of_le hgt hratio
+  rcases Filter.Eventually.exists (hu_upper.and hu_lower) with ⟨n, hle, hlt⟩
+  linarith
+
 /-- A function that equals `0` at the origin but stays uniformly above a positive level on
 `(0,1]` cannot be continuous at `0`. This packages the contradiction pattern behind the
 finite-penalty AES argument. -/
@@ -1113,6 +1206,26 @@ theorem indicatorAESProbabilityProfile_ratio_eventually_le_of_cutoff
   exact indicatorAESClosedForm_ratio_le_of_cutoff (g := g) hc hmono hgnonneg hq0bar hbar1
     hlarge ht0 htbar htgap
 
+/-- The paper's choice of a sufficiently large payoff level `λ` implies the strict pointwise ratio
+gap needed for the infinite-left contradiction. -/
+theorem point_ratio_strict_of_lambda_bound
+    (g : Level → ℝ) {c : ℝ} {q0 p1 : Level}
+    (hq0p1 : (q0 : ℝ) < (p1 : ℝ))
+    (hp1 : (p1 : ℝ) < 1)
+    (hc_large : g p1 * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) < c) :
+    c / (1 - (q0 : ℝ)) < (c - g p1) / (1 - (p1 : ℝ)) := by
+  have hgap_pos : 0 < (p1 : ℝ) - (q0 : ℝ) := sub_pos.mpr hq0p1
+  have hden_pos : 0 < 1 - (q0 : ℝ) := by
+    exact sub_pos.mpr (lt_trans hq0p1 hp1)
+  have hnum_pos : 0 < 1 - (p1 : ℝ) := sub_pos.mpr hp1
+  have hmain :
+      g p1 * (1 - (q0 : ℝ)) < c * ((p1 : ℝ) - (q0 : ℝ)) := by
+    exact (div_lt_iff₀ hgap_pos).mp hc_large
+  have htarget :
+      c * (1 - (p1 : ℝ)) < (c - g p1) * (1 - (q0 : ℝ)) := by
+    linarith
+  exact (div_lt_div_iff₀ hden_pos hnum_pos).2 htarget
+
 /-- Lean-valid contradiction template for the infinite-left AES argument: once one has
 origin-slope control and concavity of the indicator profile, any strictly larger ratio at a
 positive point is impossible. -/
@@ -1176,6 +1289,62 @@ theorem infiniteLeft_indicatorAES_contradiction_of_concave_eventuallyUpper
       indicatorAESProbabilityProfile_ratio_ge_at_level (P := P) hsplit g hc hgnonneg hp1
     exact lt_of_lt_of_le hpoint hlower
   exact not_eventually_le_ratio_nhdsWithin_zero_of_antitoneOn_above hanti ht1 hratio hupper
+
+/-- Infinite-left contradiction using only the midpoint inequality already derived from
+submodularity, together with a cutoff-based eventual upper bound near the origin. -/
+theorem infiniteLeft_indicatorAES_contradiction_of_midpoint_eventuallyUpper
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c q0 : ℝ}
+    (hc : 0 < c) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hmid :
+      ∀ ⦃x y : ℝ⦄, x ∈ Set.Icc (0 : ℝ) 1 → y ∈ Set.Icc (0 : ℝ) 1 →
+        indicatorAESProbabilityProfile P hsplit g c (midpoint ℝ x y) ≥
+          midpoint ℝ (indicatorAESProbabilityProfile P hsplit g c x)
+            (indicatorAESProbabilityProfile P hsplit g c y))
+    (hzero : indicatorAESProbabilityProfile P hsplit g c 0 = 0)
+    (hupper :
+      ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+        indicatorAESProbabilityProfile P hsplit g c t / t ≤ c / (1 - q0))
+    {p1 : Level} (hp1 : (p1 : ℝ) < 1)
+    (hpoint : c / (1 - q0) < (c - g p1) / (1 - (p1 : ℝ))) :
+    False := by
+  have ht1 : 1 - (p1 : ℝ) ∈ Set.Ioc (0 : ℝ) 1 := by
+    constructor
+    · linarith
+    · have hp1_nonneg : 0 ≤ (p1 : ℝ) := p1.2.1
+      linarith
+  have hratio :
+      c / (1 - q0) <
+        indicatorAESProbabilityProfile P hsplit g c (1 - (p1 : ℝ)) / (1 - (p1 : ℝ)) := by
+    have hlower :=
+      indicatorAESProbabilityProfile_ratio_ge_at_level (P := P) hsplit g hc hgnonneg hp1
+    exact lt_of_lt_of_le hpoint hlower
+  exact not_eventually_le_ratio_nhdsWithin_zero_of_midpoint_above hmid hzero ht1 hratio hupper
+
+/-- AES-specific midpoint/cutoff contradiction package for the infinite-left case. -/
+theorem infiniteLeft_indicatorAES_contradiction_of_submodular_cutoff
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c : ℝ}
+    (hc : 0 < c) (hsub : Submodular (AES P g)) (hg0 : g 0 = 0)
+    (hmono : _root_.Monotone g) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    {q0 bar p1 : Level}
+    (hq0bar : (q0 : ℝ) < (bar : ℝ)) (hbar1 : (bar : ℝ) < 1)
+    (hq0pos : 0 < g q0) (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p)
+    (hp1 : (p1 : ℝ) < 1)
+    (hpoint : c / (1 - (q0 : ℝ)) < (c - g p1) / (1 - (p1 : ℝ))) :
+    False := by
+  have hmid :
+      ∀ ⦃x y : ℝ⦄, x ∈ Set.Icc (0 : ℝ) 1 → y ∈ Set.Icc (0 : ℝ) 1 →
+        indicatorAESProbabilityProfile P hsplit g c (midpoint ℝ x y) ≥
+          midpoint ℝ (indicatorAESProbabilityProfile P hsplit g c x)
+            (indicatorAESProbabilityProfile P hsplit g c y) := by
+    intro x y hx hy
+    exact midpoint_ge_average_indicatorAESProbabilityProfile (P := P) hsplit g (le_of_lt hc) hsub
+      hx hy
+  have hzero := indicatorAESProbabilityProfile_zero_eq_zero (P := P) hsplit g c hg0 hgnonneg
+  have hupper :=
+    indicatorAESProbabilityProfile_ratio_eventually_le_of_cutoff (P := P) hsplit g hc hmono
+      hgnonneg hq0bar hbar1 hq0pos hlarge
+  exact infiniteLeft_indicatorAES_contradiction_of_midpoint_eventuallyUpper (P := P) hsplit g hc
+    hgnonneg hmid hzero hupper hp1 hpoint
 
 /-- Infinite-left contradiction template with the origin value discharged automatically by
 `g(0) = 0`. -/
