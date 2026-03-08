@@ -40,6 +40,21 @@ For the AES proof specifically, the repository now also isolates:
 - a project-level strong atomless splitting property, since `mathlib`'s `NoAtoms` is weaker than
   the exact splitting used in the paper proof.
 
+## Library-first notes
+
+The current formalization strategy is to reuse `mathlib` aggressively whenever the abstraction
+already exists, instead of rebuilding parallel APIs inside this repository. In practice this has
+been especially helpful in four places:
+
+- `ProbabilityTheory.IdentDistrib` / `HasLaw` for law-invariance arguments;
+- `ProbabilityTheory.cdf` and related measure-equality lemmas for distribution-level work;
+- `ConvexOn` / `ConcaveOn` / Jensen / `OrderIso` for inverse-function and profile arguments;
+- indicator-function measurability and integral lemmas for positions of the form `c 1_A`.
+
+The main place where `mathlib` currently does not reach the exact AES proof is atomlessness:
+`MeasureTheory.NoAtoms` is available, but it only gives singleton-nullness, not the stronger event
+splitting property `∀ t ≤ P(A), ∃ B ⊆ A, P(B) = t` used in the paper proof.
+
 ## Quick start
 
 ```bash

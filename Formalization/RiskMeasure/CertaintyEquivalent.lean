@@ -1,3 +1,5 @@
+import Mathlib.Analysis.Convex.Integral
+import Mathlib.Order.Hom.Set
 import Formalization.RiskMeasure.RandomVariable
 import Formalization.RiskMeasure.LawInvariant
 
@@ -20,9 +22,73 @@ namespace RiskMeasure
 def generalizedInverse (ℓ : ℝ → ℝ) (y : ℝ) : ℝ :=
   sInf {x : ℝ | y ≤ ℓ x}
 
+section GeneralizedInverse
+
+variable {ℓ : ℝ → ℝ}
+
+/-- A lower generalized inverse recovers the original point on the image of a strictly increasing
+function. -/
+@[simp] theorem generalizedInverse_apply (hmono : StrictMono ℓ) (x : ℝ) :
+    generalizedInverse ℓ (ℓ x) = x := by
+  have hset : {z : ℝ | ℓ x ≤ ℓ z} = Set.Ici x := by
+    ext z
+    simp [hmono.le_iff_le]
+  simp [generalizedInverse, hset]
+
+/-- For a strictly increasing bijection, the lower generalized inverse agrees with the order
+isomorphism inverse from `mathlib`. -/
+theorem generalizedInverse_eq_orderIso_symm (hmono : StrictMono ℓ)
+    (hsurj : Function.Surjective ℓ) :
+    generalizedInverse ℓ = (hmono.orderIsoOfSurjective ℓ hsurj).symm := by
+  funext y
+  let e : ℝ ≃o ℝ := hmono.orderIsoOfSurjective ℓ hsurj
+  have hset : {x : ℝ | y ≤ ℓ x} = Set.Ici (e.symm y) := by
+    ext x
+    constructor
+    · intro hx
+      have hxy : e (e.symm y) ≤ e x := by
+        simpa [e] using hx
+      exact (e.le_iff_le.mp hxy)
+    · intro hx
+      have hxy : e (e.symm y) ≤ e x := e.le_iff_le.mpr hx
+      simpa [e] using hxy
+  rw [generalizedInverse, hset, csInf_Ici]
+
+/-- The lower generalized inverse of a strictly increasing bijection is monotone. -/
+theorem monotone_generalizedInverse (hmono : StrictMono ℓ) (hsurj : Function.Surjective ℓ) :
+    Monotone (generalizedInverse ℓ) := by
+  simpa [generalizedInverse_eq_orderIso_symm (ℓ := ℓ) hmono hsurj] using
+    (hmono.orderIsoOfSurjective ℓ hsurj).symm.monotone
+
+/-- Convexity transfers to concavity of the generalized inverse once the underlying loss function is
+packaged as an order isomorphism. -/
+theorem concaveOn_generalizedInverse_univ_of_convexOn (hconv : ConvexOn ℝ Set.univ ℓ)
+    (hmono : StrictMono ℓ) (hsurj : Function.Surjective ℓ) :
+    ConcaveOn ℝ Set.univ (generalizedInverse ℓ) := by
+  let e : ℝ ≃o ℝ := hmono.orderIsoOfSurjective ℓ hsurj
+  have heconv : ConvexOn ℝ Set.univ e := by
+    simpa [e] using hconv
+  simpa [generalizedInverse_eq_orderIso_symm (ℓ := ℓ) hmono hsurj, e] using
+    (OrderIso.concaveOn_symm e heconv)
+
+end GeneralizedInverse
+
 /-- Distribution-level certainty equivalent induced by a loss function `ℓ`. -/
 def distCE (μ : Measure ℝ) [IsProbabilityMeasure μ] (ℓ : ℝ → ℝ) : ℝ :=
   generalizedInverse ℓ (∫ x, ℓ x ∂μ)
+
+section GeneralizedInverse
+
+variable {ℓ : ℝ → ℝ}
+
+/-- Distribution-level certainty equivalents can be rewritten using the `mathlib` order isomorphism
+inverse once the loss function is strictly increasing and surjective. -/
+theorem distCE_eq_orderIso_symm (μ : Measure ℝ) [IsProbabilityMeasure μ]
+    (hmono : StrictMono ℓ) (hsurj : Function.Surjective ℓ) :
+    distCE μ ℓ = (hmono.orderIsoOfSurjective ℓ hsurj).symm (∫ x, ℓ x ∂μ) := by
+  rw [distCE, generalizedInverse_eq_orderIso_symm (ℓ := ℓ) hmono hsurj]
+
+end GeneralizedInverse
 
 section
 
