@@ -46,6 +46,15 @@ def CashAdditive [AddMonoid X] [AddMonoid C] (cash : C →+ X) (ρ : X → C) : 
 def Subadditive [Add X] [Preorder C] [Add C] (ρ : X → C) : Prop :=
   ∀ (x y : X), ρ (x + y) ≤ ρ x + ρ y
 
+/-- Submodularity on a lattice. -/
+def Submodular [SemilatticeInf X] [SemilatticeSup X] [Preorder C] [Add C] (ρ : X → C) : Prop :=
+  ∀ (x y : X), ρ (x ⊓ y) + ρ (x ⊔ y) ≤ ρ x + ρ y
+
+/-- Supermodularity on a lattice. -/
+def Supermodular [SemilatticeInf X] [SemilatticeSup X] [Preorder C] [Add C] (ρ : X → C) :
+    Prop :=
+  ∀ (x y : X), ρ x + ρ y ≤ ρ (x ⊓ y) + ρ (x ⊔ y)
+
 /-- Positive homogeneity for nonnegative scalars. -/
 def PosHomogeneous [SMul NNReal X] [SMul NNReal C] (ρ : X → C) : Prop :=
   ∀ (a : NNReal) (x : X), ρ (a • x) = a • ρ x

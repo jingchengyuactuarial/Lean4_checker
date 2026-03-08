@@ -1,2 +1,2 @@
 import Formalization.RiskMeasure.Basic
-import Formalization.RiskMeasure.Examples
+import Formalization.RiskMeasure.Common

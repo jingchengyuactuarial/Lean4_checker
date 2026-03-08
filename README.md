@@ -4,8 +4,10 @@ Standalone Lean 4 project for reusable risk-measure foundations.
 
 Current scope:
 
-- abstract axioms for monotone, cash-additive, subadditive, convex, and coherent risk measures;
-- a small working example on `ℝ`;
+- abstract axioms for monotone, cash-additive, subadditive, submodular, supermodular,
+  convex, and coherent risk measures;
+- reusable interfaces for common named risk measures such as `VaR`, `ES`, `AES`, `ESg`,
+  `MAD`, `MMD`, and variance;
 - a placeholder entry point for the AES submodularity project.
 
 Planned scope:
@@ -25,7 +27,7 @@ lake build
 ## Current module layout
 
 - `Formalization/RiskMeasure/Basic.lean`
-- `Formalization/RiskMeasure/Examples.lean`
+- `Formalization/RiskMeasure/Common.lean`
 - `Formalization/AesSubmodularity.lean`
 
 ## GitHub notes
