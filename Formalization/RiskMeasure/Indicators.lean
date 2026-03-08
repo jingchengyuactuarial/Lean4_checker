@@ -58,6 +58,42 @@ def scaledIndicatorRV (P : Measure Ω) (c : ℝ) (A : Set Ω) (hA : MeasurableSe
   simpa [scaledIndicator_eq_indicator_const (Ω := Ω) c A] using
     (Measurable.indicator measurable_const hA).aemeasurable
 
+omit [MeasurableSpace Ω] in
+/-- For nonnegative payoff levels, intersection corresponds to pointwise minimum. -/
+theorem scaledIndicator_inf_eq_inter (hc : 0 ≤ c) (A B : Set Ω) :
+    min (scaledIndicator c A) (scaledIndicator c B) = scaledIndicator c (A ∩ B) := by
+  funext ω
+  by_cases hωA : ω ∈ A <;> by_cases hωB : ω ∈ B <;>
+    simp [scaledIndicator, eventIndicator, hωA, hωB, hc]
+
+omit [MeasurableSpace Ω] in
+/-- For nonnegative payoff levels, union corresponds to pointwise maximum. -/
+theorem scaledIndicator_sup_eq_union (hc : 0 ≤ c) (A B : Set Ω) :
+    max (scaledIndicator c A) (scaledIndicator c B) = scaledIndicator c (A ∪ B) := by
+  funext ω
+  by_cases hωA : ω ∈ A <;> by_cases hωB : ω ∈ B <;>
+    simp [scaledIndicator, eventIndicator, hωA, hωB, hc]
+
+/-- Indicator positions respect `⊓` under nonnegative scaling. -/
+theorem scaledIndicatorRV_inf_eq_inter (P : Measure Ω) {c : ℝ} (hc : 0 ≤ c)
+    {A B : Set Ω} (hA : MeasurableSet A) (hB : MeasurableSet B) :
+    scaledIndicatorRV P c (A ∩ B) (hA.inter hB) =
+      scaledIndicatorRV P c A hA ⊓ scaledIndicatorRV P c B hB := by
+  ext ω
+  change scaledIndicator c (A ∩ B) ω = min (scaledIndicator c A ω) (scaledIndicator c B ω)
+  rw [← congrFun (scaledIndicator_inf_eq_inter (Ω := Ω) hc A B) ω]
+  rfl
+
+/-- Indicator positions respect `⊔` under nonnegative scaling. -/
+theorem scaledIndicatorRV_sup_eq_union (P : Measure Ω) {c : ℝ} (hc : 0 ≤ c)
+    {A B : Set Ω} (hA : MeasurableSet A) (hB : MeasurableSet B) :
+    scaledIndicatorRV P c (A ∪ B) (hA.union hB) =
+      scaledIndicatorRV P c A hA ⊔ scaledIndicatorRV P c B hB := by
+  ext ω
+  change scaledIndicator c (A ∪ B) ω = max (scaledIndicator c A ω) (scaledIndicator c B ω)
+  rw [← congrFun (scaledIndicator_sup_eq_union (Ω := Ω) hc A B) ω]
+  rfl
+
 section Probability
 
 variable (P : Measure Ω) [IsProbabilityMeasure P]

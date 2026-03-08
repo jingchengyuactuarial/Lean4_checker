@@ -28,6 +28,12 @@ def EventProfile (P : Measure Ω) (μ : Set Ω → C) (φ : ℝ → C) : Prop :=
 abbrev SetSubmodular [Preorder C] [Add C] (μ : Set Ω → C) : Prop :=
   Submodular μ
 
+/-- Event submodularity restricted to measurable sets. This is the exact form typically used in
+probability-space arguments, including the AES reduction. -/
+def MeasurableSetSubmodular (μ : Set Ω → ℝ) : Prop :=
+  ∀ ⦃A B : Set Ω⦄, MeasurableSet A → MeasurableSet B →
+    μ (A ∩ B) + μ (A ∪ B) ≤ μ A + μ B
+
 /-- Decreasing increments on `[0,1]`, the profile property used in the AES proof. -/
 def DecreasingIncrements (φ : ℝ → ℝ) : Prop :=
   ∀ ⦃s t h : ℝ⦄, 0 ≤ s → s ≤ t → 0 ≤ h → t + h ≤ 1 →
@@ -41,6 +47,12 @@ open MeasureTheory
 
 variable {Ω : Type*} [MeasurableSpace Ω]
 variable (P : Measure Ω)
+
+/-- Full set-function submodularity implies measurable-event submodularity. -/
+theorem MeasurableSetSubmodular.of_setSubmodular {μ : Set Ω → ℝ}
+    (hμ : SetSubmodular μ) : MeasurableSetSubmodular μ := by
+  intro A B hA hB
+  exact hμ A B
 
 /-- Any explicit event profile automatically depends only on event probability. -/
 theorem DependsOnlyOnProbability.of_eventProfile {μ : Set Ω → ℝ} {φ : ℝ → ℝ}
@@ -90,9 +102,9 @@ theorem EventProfile.of_dependsOnlyOnProbability {μ : Set Ω → C}
 
 /-- An event profile over a submodular set function has decreasing increments whenever the
 underlying probability space admits exact event splitting. -/
-theorem decreasingIncrements_of_setSubmodular_of_eventProfile
+theorem decreasingIncrements_of_measurableSetSubmodular_of_eventProfile
     {μ : Set Ω → ℝ} {φ : ℝ → ℝ} (hsplit : HasFullEventSplitting P)
-    (hμ : SetSubmodular μ) (hφ : EventProfile P μ φ) :
+    (hμ : MeasurableSetSubmodular μ) (hφ : EventProfile P μ φ) :
     DecreasingIncrements φ := by
   intro s t h hs0 hst hh0 hth1
   have ht0 : 0 ≤ t := le_trans hs0 hst
@@ -153,9 +165,27 @@ theorem decreasingIncrements_of_setSubmodular_of_eventProfile
   have hTUH_eval : μ (T ∪ H) = φ (t + h) := by
     rw [hφ (hT.union hH)]
     simpa [Measure.real] using congrArg φ hTUH_real
-  have hsub : μ ((S ∪ H) ∩ T) + μ ((S ∪ H) ∪ T) ≤ μ (S ∪ H) + μ T := hμ (S ∪ H) T
+  have hsub : μ ((S ∪ H) ∩ T) + μ ((S ∪ H) ∪ T) ≤ μ (S ∪ H) + μ T := hμ (hS.union hH) hT
   rw [h_inter, h_union, hS_eval, hTUH_eval, hSUH_eval, hT_eval] at hsub
   exact hsub
+
+/-- An event profile over a submodular set function has decreasing increments whenever the
+underlying probability space admits exact event splitting. -/
+theorem decreasingIncrements_of_setSubmodular_of_eventProfile
+    {μ : Set Ω → ℝ} {φ : ℝ → ℝ} (hsplit : HasFullEventSplitting P)
+    (hμ : SetSubmodular μ) (hφ : EventProfile P μ φ) :
+    DecreasingIncrements φ := by
+  exact decreasingIncrements_of_measurableSetSubmodular_of_eventProfile (P := P) hsplit
+    (MeasurableSetSubmodular.of_setSubmodular hμ) hφ
+
+/-- Combined bridge used in the AES proof: a submodular set function that depends only on event
+probability induces a one-dimensional profile with decreasing increments. -/
+theorem decreasingIncrements_of_measurableSetSubmodular_of_dependsOnlyOnProbability
+    {μ : Set Ω → ℝ} (hsplit : HasFullEventSplitting P) (hμ : MeasurableSetSubmodular μ)
+    (hdep : DependsOnlyOnProbability P μ) :
+    DecreasingIncrements (profileFromProbability P hsplit μ) := by
+  exact decreasingIncrements_of_measurableSetSubmodular_of_eventProfile (P := P) hsplit hμ
+    (EventProfile.of_dependsOnlyOnProbability (P := P) hsplit hdep)
 
 /-- Combined bridge used in the AES proof: a submodular set function that depends only on event
 probability induces a one-dimensional profile with decreasing increments. -/
@@ -163,8 +193,8 @@ theorem decreasingIncrements_of_setSubmodular_of_dependsOnlyOnProbability
     {μ : Set Ω → ℝ} (hsplit : HasFullEventSplitting P) (hμ : SetSubmodular μ)
     (hdep : DependsOnlyOnProbability P μ) :
     DecreasingIncrements (profileFromProbability P hsplit μ) := by
-  exact decreasingIncrements_of_setSubmodular_of_eventProfile (P := P) hsplit hμ
-    (EventProfile.of_dependsOnlyOnProbability (P := P) hsplit hdep)
+  exact decreasingIncrements_of_measurableSetSubmodular_of_dependsOnlyOnProbability
+    (P := P) hsplit (MeasurableSetSubmodular.of_setSubmodular hμ) hdep
 
 end ProbabilityProfiles
 

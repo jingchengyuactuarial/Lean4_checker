@@ -390,4 +390,107 @@ theorem linfIndicatorESTestProfile_eq_of_measure_eq (c : ℝ) {A B : Set Ω}
 
 end ESProfiles
 
+section EventProfiles
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+/-- The event set function induced by testing a risk functional on scaled indicators. Nonmeasurable
+sets are sent to `0`; all AES reductions only use the measurable branch. -/
+def scaledIndicatorSetFunction (ρ : RandomVariable P → ℝ) (c : ℝ) : Set Ω → ℝ :=
+  by
+    classical
+    exact fun A => if hA : MeasurableSet A then ρ (scaledIndicatorRV P c A hA) else 0
+
+omit [IsProbabilityMeasure P] in
+/-- On measurable events, the induced set function is computed by the expected indicator
+position. -/
+theorem scaledIndicatorSetFunction_apply (ρ : RandomVariable P → ℝ) (c : ℝ) {A : Set Ω}
+    (hA : MeasurableSet A) :
+    scaledIndicatorSetFunction P ρ c A = ρ (scaledIndicatorRV P c A hA) := by
+  classical
+  simp [scaledIndicatorSetFunction, hA]
+
+omit [IsProbabilityMeasure P] in
+/-- A submodular risk functional yields a submodular event functional on scaled indicators. -/
+theorem measurableSetSubmodular_scaledIndicatorSetFunction
+    {ρ : RandomVariable P → ℝ} (hρ : Submodular ρ) {c : ℝ} (hc : 0 ≤ c) :
+    MeasurableSetSubmodular (scaledIndicatorSetFunction P ρ c) := by
+  intro A B hA hB
+  rw [scaledIndicatorSetFunction_apply (P := P) ρ c (hA := hA.inter hB),
+    scaledIndicatorSetFunction_apply (P := P) ρ c (hA := hA.union hB),
+    scaledIndicatorSetFunction_apply (P := P) ρ c (hA := hA),
+    scaledIndicatorSetFunction_apply (P := P) ρ c (hA := hB)]
+  have hsub := hρ (scaledIndicatorRV P c A hA) (scaledIndicatorRV P c B hB)
+  rw [← scaledIndicatorRV_inf_eq_inter (P := P) hc hA hB,
+    ← scaledIndicatorRV_sup_eq_union (P := P) hc hA hB] at hsub
+  exact hsub
+
+/-- Law invariance implies that the indicator-induced event functional depends only on event
+probability. -/
+theorem dependsOnlyOnProbability_scaledIndicatorSetFunction
+    {ρ : RandomVariable P → ℝ} (hρ : LawInvariant P ρ) (c : ℝ) :
+    DependsOnlyOnProbability P (scaledIndicatorSetFunction P ρ c) := by
+  intro A B hA hB hAB
+  rw [scaledIndicatorSetFunction_apply (P := P) ρ c hA,
+    scaledIndicatorSetFunction_apply (P := P) ρ c hB]
+  exact lawInvariant_scaledIndicator_eq_of_measure_eq (P := P)
+    (ρ := ρ) hρ c hA hB hAB
+
+/-- Combined AES-facing bridge: submodularity on random variables, together with law invariance,
+induces decreasing increments for the one-dimensional indicator profile. -/
+theorem decreasingIncrements_profileFromProbability_scaledIndicatorSetFunction
+    {ρ : RandomVariable P → ℝ} (hsplit : HasFullEventSplitting P)
+    (hρsub : Submodular ρ) (hρlaw : LawInvariant P ρ) {c : ℝ} (hc : 0 ≤ c) :
+    DecreasingIncrements (profileFromProbability P hsplit (scaledIndicatorSetFunction P ρ c)) := by
+  exact decreasingIncrements_of_measurableSetSubmodular_of_dependsOnlyOnProbability (P := P)
+    hsplit
+    (measurableSetSubmodular_scaledIndicatorSetFunction (P := P) hρsub hc)
+    (dependsOnlyOnProbability_scaledIndicatorSetFunction (P := P) hρlaw c)
+
+/-- The AES-specific indicator set function. -/
+abbrev indicatorAESSetFunction (g : Level → ℝ) (c : ℝ) : Set Ω → ℝ :=
+  scaledIndicatorSetFunction P (AES P g) c
+
+/-- The one-dimensional profile extracted from AES on indicator positions. -/
+noncomputable def indicatorAESProbabilityProfile
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) (c : ℝ) : ℝ → ℝ :=
+  profileFromProbability P hsplit (indicatorAESSetFunction P g c)
+
+/-- If `AES` is submodular, then its indicator probability profile has decreasing increments. -/
+theorem decreasingIncrements_indicatorAESProbabilityProfile
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c : ℝ} (hc : 0 ≤ c)
+    (hsub : Submodular (AES P g)) :
+    DecreasingIncrements (indicatorAESProbabilityProfile P hsplit g c) := by
+  simpa [indicatorAESProbabilityProfile, indicatorAESSetFunction] using
+    (decreasingIncrements_profileFromProbability_scaledIndicatorSetFunction
+      (P := P) (ρ := AES P g) hsplit hsub (AES_lawInvariant (P := P) g) hc)
+
+/-- On strictly positive masses, the chosen AES indicator profile agrees with the closed-form
+envelope already computed for indicator positions. -/
+theorem indicatorAESProbabilityProfile_eq_indicatorAESClosedForm
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) (c : ℝ) (hc : 0 < c)
+    {t : ℝ} (ht0 : 0 < t) (ht1 : t ≤ 1) :
+    indicatorAESProbabilityProfile P hsplit g c t = indicatorAESClosedForm g c t := by
+  let A : Set Ω := Classical.choose (exists_measurableSet_measureReal_eq
+    (P := P) hsplit (le_of_lt ht0) ht1)
+  have hA : MeasurableSet A :=
+    (Classical.choose_spec (exists_measurableSet_measureReal_eq
+      (P := P) hsplit (le_of_lt ht0) ht1)).1
+  have hAreal : P.real A = t :=
+    (Classical.choose_spec (exists_measurableSet_measureReal_eq
+      (P := P) hsplit (le_of_lt ht0) ht1)).2
+  have hA_pos : P A ≠ 0 := by
+    intro hPA
+    have hreal0 : P.real A = 0 := (measureReal_eq_zero_iff (μ := P)).mpr hPA
+    linarith [hAreal, ht0]
+  rw [indicatorAESProbabilityProfile, profileFromProbability_eq (P := P) hsplit
+    (indicatorAESSetFunction P g c) (le_of_lt ht0) ht1]
+  change scaledIndicatorSetFunction P (AES P g) c A = indicatorAESClosedForm g c t
+  rw [scaledIndicatorSetFunction_apply (P := P) (ρ := AES P g) c hA]
+  simpa [indicatorAESSetFunction, hAreal] using
+    AES_scaledIndicatorRV_eq_indicatorAESClosedForm (P := P) g c hc hA hA_pos
+
+end EventProfiles
+
 end AesSubmodularity

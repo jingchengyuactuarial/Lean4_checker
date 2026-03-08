@@ -1,3 +1,4 @@
+import Mathlib.MeasureTheory.Constructions.BorelSpace.Order
 import Mathlib.MeasureTheory.Function.EssSup
 import Mathlib.Probability.HasLaw
 import Mathlib.Topology.UnitInterval
@@ -54,6 +55,16 @@ instance : Zero (RandomVariable P) := ⟨const P 0⟩
 instance : Add (RandomVariable P) where
   add X Y := ⟨X.1 + Y.1, X.2.add Y.2⟩
 
+instance : LE (RandomVariable P) := ⟨fun X Y => X.1 ≤ Y.1⟩
+
+instance : LT (RandomVariable P) := ⟨fun X Y => X.1 < Y.1⟩
+
+instance : Max (RandomVariable P) where
+  max X Y := ⟨fun ω => max (X.1 ω) (Y.1 ω), X.2.max Y.2⟩
+
+instance : Min (RandomVariable P) where
+  min X Y := ⟨fun ω => min (X.1 ω) (Y.1 ω), X.2.min Y.2⟩
+
 instance : SMul ℕ (RandomVariable P) where
   smul n X := ⟨n • X.1, by
     simpa [nsmul_eq_mul, smul_eq_mul] using X.2.const_mul (n : ℝ)⟩
@@ -66,14 +77,41 @@ instance : SMul ℕ (RandomVariable P) where
 @[simp] theorem coe_add (X Y : RandomVariable P) : ((X + Y : RandomVariable P) : Ω → ℝ) = X + Y :=
   rfl
 
+@[simp] theorem coe_le (X Y : RandomVariable P) : (X ≤ Y) ↔ (X : Ω → ℝ) ≤ Y :=
+  Iff.rfl
+
+@[simp] theorem coe_lt (X Y : RandomVariable P) : (X < Y) ↔ (X : Ω → ℝ) < Y :=
+  Iff.rfl
+
 @[simp] theorem coe_nsmul (n : ℕ) (X : RandomVariable P) :
     ((n • X : RandomVariable P) : Ω → ℝ) = n • (X : Ω → ℝ) :=
+  rfl
+
+@[simp] theorem coe_max (X Y : RandomVariable P) :
+    ((max X Y : RandomVariable P) : Ω → ℝ) = fun ω => max (X.1 ω) (Y.1 ω) :=
+  rfl
+
+@[simp] theorem coe_min (X Y : RandomVariable P) :
+    ((min X Y : RandomVariable P) : Ω → ℝ) = fun ω => min (X.1 ω) (Y.1 ω) :=
   rfl
 
 instance : AddCommMonoid (RandomVariable P) :=
   Function.Injective.addCommMonoid (fun X : RandomVariable P => (X : Ω → ℝ))
     Subtype.coe_injective (coe_zero (P := P)) (coe_add (P := P))
       (fun X n => coe_nsmul (P := P) n X)
+
+instance : Lattice (RandomVariable P) :=
+  Function.Injective.lattice (fun X : RandomVariable P => (X : Ω → ℝ))
+    Subtype.coe_injective (fun {_ _} => Iff.rfl) (fun {_ _} => Iff.rfl)
+    (fun _ _ => rfl) (fun _ _ => rfl)
+
+@[simp] theorem coe_sup (X Y : RandomVariable P) :
+    ((X ⊔ Y : RandomVariable P) : Ω → ℝ) = fun ω => max (X.1 ω) (Y.1 ω) :=
+  rfl
+
+@[simp] theorem coe_inf (X Y : RandomVariable P) :
+    ((X ⊓ Y : RandomVariable P) : Ω → ℝ) = fun ω => min (X.1 ω) (Y.1 ω) :=
+  rfl
 
 instance : SMul NNReal (RandomVariable P) where
   smul a X := ⟨a • X.1, by
