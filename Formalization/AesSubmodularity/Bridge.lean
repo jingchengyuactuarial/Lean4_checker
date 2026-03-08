@@ -466,6 +466,19 @@ theorem decreasingIncrements_indicatorAESProbabilityProfile
     (decreasingIncrements_profileFromProbability_scaledIndicatorSetFunction
       (P := P) (ρ := AES P g) hsplit hsub (AES_lawInvariant (P := P) g) hc)
 
+/-- The indicator probability profile extracted from a submodular `AES` satisfies the midpoint
+concavity inequality on `[0,1]`. This is the first concavity consequence used in the final
+characterization argument. -/
+theorem midpoint_ge_average_indicatorAESProbabilityProfile
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c : ℝ} (hc : 0 ≤ c)
+    (hsub : Submodular (AES P g)) {x y : ℝ}
+    (hx : x ∈ Set.Icc (0 : ℝ) 1) (hy : y ∈ Set.Icc (0 : ℝ) 1) :
+    indicatorAESProbabilityProfile P hsplit g c (midpoint ℝ x y) ≥
+      midpoint ℝ (indicatorAESProbabilityProfile P hsplit g c x)
+        (indicatorAESProbabilityProfile P hsplit g c y) := by
+  exact midpoint_ge_average_of_decreasingIncrements
+    (decreasingIncrements_indicatorAESProbabilityProfile (P := P) hsplit g hc hsub) hx hy
+
 /-- On strictly positive masses, the chosen AES indicator profile agrees with the closed-form
 envelope already computed for indicator positions. -/
 theorem indicatorAESProbabilityProfile_eq_indicatorAESClosedForm
@@ -490,6 +503,69 @@ theorem indicatorAESProbabilityProfile_eq_indicatorAESClosedForm
   rw [scaledIndicatorSetFunction_apply (P := P) (ρ := AES P g) c hA]
   simpa [indicatorAESSetFunction, hAreal] using
     AES_scaledIndicatorRV_eq_indicatorAESClosedForm (P := P) g c hc hA hA_pos
+
+/-- If `g` is bounded above by `M` on `[0,1]`, then the indicator-level AES closed form enjoys a
+uniform positive lower bound on `(0,1]` as soon as `c > M`. This is the quantitative ingredient
+behind the `p₀ < 1` contradiction in the finite-penalty case. -/
+theorem indicatorAESClosedForm_lowerBound_of_bddAbove
+    (g : Level → ℝ) {c M : ℝ} (hc : 0 < c) {t : ℝ} (ht0 : 0 < t)
+    (ht1 : t ≤ 1) (hgnonneg : ∀ p : Level, 0 ≤ g p) (hg : ∀ p : Level, g p ≤ M) :
+    c - M ≤ indicatorAESClosedForm g c t := by
+  let p : Level := ⟨1 - t / 2, by constructor <;> linarith⟩
+  have hp_lt : ((p : Level) : ℝ) < 1 := by
+    change 1 - t / 2 < 1
+    linarith
+  have hmin : min 1 (t / (1 - ((p : Level) : ℝ))) = 1 := by
+    change min 1 (t / (1 - (1 - t / 2))) = 1
+    have ht_ne : t ≠ 0 := ne_of_gt ht0
+    have htwo : t / (t / 2) = 2 := by
+      field_simp [ht_ne]
+    have hden : 1 - (1 - t / 2) = t / 2 := by ring
+    rw [hden, htwo]
+    norm_num
+  have hmem :
+      indicatorESClosedForm c t p - g p ∈
+        Set.range (fun q : Level => indicatorESClosedForm c t q - g q) := by
+    exact ⟨p, rfl⟩
+  have hsSup :
+      indicatorESClosedForm c t p - g p ≤ indicatorAESClosedForm g c t := by
+    unfold indicatorAESClosedForm
+    exact le_csSup
+      ⟨c, by
+        rintro _ ⟨q, rfl⟩
+        by_cases hq : (q : ℝ) < 1
+        · have hmin_le : min 1 (t / (1 - (q : ℝ))) ≤ 1 := min_le_left _ _
+          simp [indicatorESClosedForm, hq]
+          nlinarith [hmin_le, hgnonneg q, hc]
+        · simp [indicatorESClosedForm, hq]
+          linarith [hgnonneg q]⟩
+      hmem
+  have hp_eval : indicatorESClosedForm c t p = c := by
+    simp [indicatorESClosedForm, hp_lt, hmin]
+  calc
+    c - M ≤ c - g p := by linarith [hg p]
+    _ = indicatorESClosedForm c t p - g p := by rw [hp_eval]
+    _ ≤ indicatorAESClosedForm g c t := hsSup
+
+/-- Under the same bounded-penalty assumption, the indicator-level AES closed form is strictly
+positive on `(0,1]` whenever the payoff level dominates the penalty bound. -/
+theorem indicatorAESClosedForm_pos_of_bddAbove
+    (g : Level → ℝ) {c M : ℝ} (hc : 0 < c) (hcM : M < c) {t : ℝ} (ht0 : 0 < t)
+    (ht1 : t ≤ 1) (hgnonneg : ∀ p : Level, 0 ≤ g p) (hg : ∀ p : Level, g p ≤ M) :
+    0 < indicatorAESClosedForm g c t := by
+  have hbound :=
+    indicatorAESClosedForm_lowerBound_of_bddAbove (g := g) hc ht0 ht1 hgnonneg hg
+  linarith
+
+/-- The chosen AES indicator probability profile inherits the same strict positivity on `(0,1]`
+once it is identified with the closed form. -/
+theorem indicatorAESProbabilityProfile_pos_of_bddAbove
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c M : ℝ} (hc : 0 < c) (hcM : M < c)
+    {t : ℝ} (ht0 : 0 < t) (ht1 : t ≤ 1) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hg : ∀ p : Level, g p ≤ M) :
+    0 < indicatorAESProbabilityProfile P hsplit g c t := by
+  rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
+  exact indicatorAESClosedForm_pos_of_bddAbove (g := g) hc hcM ht0 ht1 hgnonneg hg
 
 end EventProfiles
 

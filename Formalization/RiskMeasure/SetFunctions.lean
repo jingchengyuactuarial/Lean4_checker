@@ -39,6 +39,56 @@ def DecreasingIncrements (φ : ℝ → ℝ) : Prop :=
   ∀ ⦃s t h : ℝ⦄, 0 ≤ s → s ≤ t → 0 ≤ h → t + h ≤ 1 →
     φ (s + h) + φ t ≥ φ s + φ (t + h)
 
+/-- Decreasing increments imply the midpoint inequality on `[0,1]`. This is the first, fully
+elementary concavity consequence used in the AES proof. -/
+private theorem midpoint_ge_average_of_decreasingIncrements_of_le {φ : ℝ → ℝ}
+    (hφ : DecreasingIncrements φ) {x y : ℝ}
+    (hxy : x ≤ y)
+    (hx : x ∈ Set.Icc (0 : ℝ) 1) (hy : y ∈ Set.Icc (0 : ℝ) 1) :
+    φ (midpoint ℝ x y) ≥ midpoint ℝ (φ x) (φ y) := by
+  have hhalf_nonneg : 0 ≤ (y - x) / 2 := by linarith
+  let m : ℝ := midpoint ℝ x y
+  have hm : m = x + (y - x) / 2 := by
+    dsimp [m]
+    rw [midpoint_eq_smul_add, invOf_eq_inv, smul_eq_mul]
+    ring_nf
+  have htop : x + (y - x) / 2 + (y - x) / 2 = y := by
+    ring
+  have hmh : m + (y - x) / 2 = y := by
+    rw [hm]
+    exact htop
+  have hx_le_m : x ≤ m := by
+    rw [hm]
+    linarith
+  have hm_le_one : m ≤ 1 := by
+    rw [hm]
+    linarith [hx.2, hy.2]
+  have hineq :=
+    hφ hx.1 hx_le_m hhalf_nonneg (by simpa [hmh] using hy.2)
+  rw [hm, htop] at hineq
+  have hineq' : 2 * φ (midpoint ℝ x y) ≥ φ x + φ y := by
+    have hineq'' := hineq
+    rw [← hm] at hineq''
+    simpa [m, two_mul] using hineq''
+  rw [midpoint_eq_smul_add, invOf_eq_inv, smul_eq_mul]
+  rw [midpoint_eq_smul_add, invOf_eq_inv, smul_eq_mul] at hineq'
+  exact le_of_not_gt (by
+    intro hlt
+    have hlt' := hlt
+    rw [midpoint_eq_smul_add, invOf_eq_inv, smul_eq_mul] at hlt'
+    linarith [hineq', hlt'])
+
+/-- Decreasing increments imply the midpoint inequality on `[0,1]`. This is the first, fully
+elementary concavity consequence used in the AES proof. -/
+theorem midpoint_ge_average_of_decreasingIncrements {φ : ℝ → ℝ}
+    (hφ : DecreasingIncrements φ) {x y : ℝ}
+    (hx : x ∈ Set.Icc (0 : ℝ) 1) (hy : y ∈ Set.Icc (0 : ℝ) 1) :
+    φ (midpoint ℝ x y) ≥ midpoint ℝ (φ x) (φ y) := by
+  rcases le_total x y with hxy | hyx
+  · exact midpoint_ge_average_of_decreasingIncrements_of_le hφ hxy hx hy
+  · rw [midpoint_comm (R := ℝ) x y, midpoint_comm (R := ℝ) (φ x) (φ y)]
+    exact midpoint_ge_average_of_decreasingIncrements_of_le hφ hyx hy hx
+
 end
 
 section ProbabilityProfiles
