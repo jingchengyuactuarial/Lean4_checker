@@ -50,6 +50,11 @@ def indicatorESClosedForm (c t : ℝ) (p : Level) : ℝ :=
   else
     c
 
+/-- Closed-form `AES` envelope on an indicator position, written directly in terms of the
+indicator-level `ES` formula. -/
+def indicatorAESClosedForm (g : Level → ℝ) (c t : ℝ) : ℝ :=
+  sSup (Set.range fun p : Level => indicatorESClosedForm c t p - g p)
+
 omit [IsProbabilityMeasure P] in
 private theorem scaledIndicatorLaw_apply_Iic (c : ℝ) {A : Set Ω} (x : ℝ) :
     scaledIndicatorLaw P c A (Set.Iic x) =
@@ -304,12 +309,48 @@ theorem ES_scaledIndicatorRV_eq_indicatorESClosedForm (p : Level) (c : ℝ) (hc 
       simpa [law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA] using hscaled
     simpa [ES, distES, indicatorESClosedForm, hp] using hmain
 
+/-- Closed form of `AES` on an indicator position `c 1_A`, obtained by substituting the closed
+form of `ES` into the `sup` defining `AES`. -/
+theorem AES_scaledIndicatorRV_eq_indicatorAESClosedForm (g : Level → ℝ) (c : ℝ) (hc : 0 < c)
+    {A : Set Ω} (hA : MeasurableSet A) (hA_pos : P A ≠ 0) :
+    AES P g (scaledIndicatorRV P c A hA) = indicatorAESClosedForm g c (P.real A) := by
+  unfold AES ESg distESg indicatorAESClosedForm
+  congr 1
+  ext y
+  constructor
+  · rintro ⟨z, rfl⟩
+    exact ⟨z, by
+      simpa [ES] using (ES_scaledIndicatorRV_eq_indicatorESClosedForm
+        (P := P) z c hc hA hA_pos).symm⟩
+  · rintro ⟨z, rfl⟩
+    exact ⟨z, by
+      simpa [ES] using ES_scaledIndicatorRV_eq_indicatorESClosedForm
+        (P := P) z c hc hA hA_pos⟩
+
 /-- Closed form of `ES` on the `L^\infty` indicator model. -/
 theorem ESLinf_linfIndicator_eq_indicatorESClosedForm (p : Level) (c : ℝ) (hc : 0 < c)
     {A : Set Ω} (hA : MeasurableSet A) (hA_pos : P A ≠ 0) :
     ESLinf P p (linfIndicator P A hA c) = indicatorESClosedForm c (P.real A) p := by
   rw [ESLinf_linfIndicator_eq_scaledIndicatorRV (P := P) p c hA]
   exact ES_scaledIndicatorRV_eq_indicatorESClosedForm (P := P) p c hc hA hA_pos
+
+/-- Closed form of `AES` on the `L^\infty` indicator model. -/
+theorem AES_ofLinf_linfIndicator_eq_indicatorAESClosedForm
+    (g : Level → ℝ) (c : ℝ) (hc : 0 < c)
+    {A : Set Ω} (hA : MeasurableSet A) (hA_pos : P A ≠ 0) :
+    AES P g (RandomVariable.ofLinf (μ := P) (linfIndicator P A hA c)) =
+      indicatorAESClosedForm g c (P.real A) := by
+  have hlaw :
+      law P (RandomVariable.ofLinf (μ := P) (linfIndicator P A hA c)) =
+        law P (scaledIndicatorRV P c A hA) := by
+    unfold law
+    exact Measure.map_congr (ofLinf_linfIndicator_ae_eq_scaledIndicatorRV (P := P) c hA)
+  calc
+    AES P g (RandomVariable.ofLinf (μ := P) (linfIndicator P A hA c)) =
+        AES P g (scaledIndicatorRV P c A hA) :=
+      AES_lawInvariant (P := P) g hlaw
+    _ = indicatorAESClosedForm g c (P.real A) :=
+      AES_scaledIndicatorRV_eq_indicatorAESClosedForm (P := P) g c hc hA hA_pos
 
 /-- The `ES` test profile for `L^\infty` indicator positions. -/
 def linfIndicatorESTestProfile (c : ℝ) (A : Set Ω) (hA : MeasurableSet A) : Level → ℝ :=

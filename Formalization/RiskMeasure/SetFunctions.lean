@@ -50,6 +50,44 @@ theorem DependsOnlyOnProbability.of_eventProfile {μ : Set Ω → ℝ} {φ : ℝ
 
 variable [IsProbabilityMeasure P]
 
+/-- Noncomputably choose a one-dimensional profile from a set functional that depends only on event
+probability. -/
+noncomputable def profileFromProbability (hsplit : HasFullEventSplitting P) (μ : Set Ω → C) :
+    ℝ → C :=
+  fun t =>
+    if ht : 0 ≤ t ∧ t ≤ 1 then
+      let A :=
+        Classical.choose (exists_measurableSet_measureReal_eq (P := P) hsplit ht.1 ht.2)
+      μ A
+    else
+      μ ∅
+
+/-- On the unit interval, the chosen profile agrees with the chosen witness event. -/
+theorem profileFromProbability_eq (hsplit : HasFullEventSplitting P) (μ : Set Ω → C)
+    {t : ℝ} (ht0 : 0 ≤ t) (ht1 : t ≤ 1) :
+    profileFromProbability P hsplit μ t =
+      μ (Classical.choose (exists_measurableSet_measureReal_eq (P := P) hsplit ht0 ht1)) := by
+  simp [profileFromProbability, ht0, ht1]
+
+/-- Exact splitting upgrades "depends only on probability" to an explicit one-dimensional event
+profile. -/
+theorem EventProfile.of_dependsOnlyOnProbability {μ : Set Ω → C}
+    (hsplit : HasFullEventSplitting P) (hμ : DependsOnlyOnProbability P μ) :
+    EventProfile P μ (profileFromProbability P hsplit μ) := by
+  intro A hA
+  have ht0 : 0 ≤ P.real A := by positivity
+  have ht1 : P.real A ≤ 1 := measureReal_le_one (μ := P)
+  let B : Set Ω := Classical.choose (exists_measurableSet_measureReal_eq (P := P) hsplit ht0 ht1)
+  have hB : MeasurableSet B :=
+    (Classical.choose_spec (exists_measurableSet_measureReal_eq (P := P) hsplit ht0 ht1)).1
+  have hBreal : P.real B = P.real A :=
+    (Classical.choose_spec (exists_measurableSet_measureReal_eq (P := P) hsplit ht0 ht1)).2
+  have hBA : P B = P A :=
+    (measureReal_eq_measureReal_iff (μ := P) (ν := P) (s := B) (t := A)).mp hBreal
+  change μ A = profileFromProbability P hsplit μ (P.real A)
+  rw [profileFromProbability_eq (P := P) hsplit μ ht0 ht1]
+  exact hμ hA hB hBA.symm
+
 /-- An event profile over a submodular set function has decreasing increments whenever the
 underlying probability space admits exact event splitting. -/
 theorem decreasingIncrements_of_setSubmodular_of_eventProfile
@@ -118,6 +156,15 @@ theorem decreasingIncrements_of_setSubmodular_of_eventProfile
   have hsub : μ ((S ∪ H) ∩ T) + μ ((S ∪ H) ∪ T) ≤ μ (S ∪ H) + μ T := hμ (S ∪ H) T
   rw [h_inter, h_union, hS_eval, hTUH_eval, hSUH_eval, hT_eval] at hsub
   exact hsub
+
+/-- Combined bridge used in the AES proof: a submodular set function that depends only on event
+probability induces a one-dimensional profile with decreasing increments. -/
+theorem decreasingIncrements_of_setSubmodular_of_dependsOnlyOnProbability
+    {μ : Set Ω → ℝ} (hsplit : HasFullEventSplitting P) (hμ : SetSubmodular μ)
+    (hdep : DependsOnlyOnProbability P μ) :
+    DecreasingIncrements (profileFromProbability P hsplit μ) := by
+  exact decreasingIncrements_of_setSubmodular_of_eventProfile (P := P) hsplit hμ
+    (EventProfile.of_dependsOnlyOnProbability (P := P) hsplit hdep)
 
 end ProbabilityProfiles
 
