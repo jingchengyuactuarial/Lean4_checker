@@ -1,3 +1,2 @@
-import Formalization.Basic
 import Formalization.RiskMeasure
 import Formalization.AesSubmodularity

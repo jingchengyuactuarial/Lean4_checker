@@ -1,5 +1,6 @@
 import Formalization.RiskMeasure.Quantile
 import Formalization.RiskMeasure.LawInvariant
+import Mathlib.MeasureTheory.Integral.Prod
 import Mathlib.Probability.Notation
 
 /-!
@@ -35,6 +36,10 @@ def distMMD (μ : Measure ℝ) [IsProbabilityMeasure μ] : ℝ :=
 /-- Distribution-level variance reusing `mathlib`. -/
 def distVariance (μ : Measure ℝ) [IsProbabilityMeasure μ] : ℝ :=
   Var[id; μ]
+
+/-- Distribution-level Gini mean difference, i.e. `E |X - X'|` for an iid pair. -/
+def distGini (μ : Measure ℝ) [IsProbabilityMeasure μ] : ℝ :=
+  ∫ z : ℝ × ℝ, |z.1 - z.2| ∂(μ.prod μ)
 
 section
 
@@ -99,6 +104,13 @@ theorem MMD_lawInvariant : LawInvariant P (MMD P) :=
 def variance (X : RandomVariable P) : ℝ :=
   Var[X; P]
 
+/-- Gini mean difference for random variables. -/
+def Gini (X : RandomVariable P) : ℝ :=
+  distGini (law P X)
+
+/-- Long-form alias for `Gini`. -/
+abbrev GiniMeanDifference := Gini P
+
 /-- Long-form alias for `variance`. -/
 abbrev Variance := variance P
 
@@ -119,6 +131,18 @@ theorem variance_factorsThroughLaw : FactorsThroughLaw P (variance P) := by
 /-- `variance` is law-invariant. -/
 theorem variance_lawInvariant : LawInvariant P (variance P) :=
   variance_factorsThroughLaw (P := P) |>.lawInvariant (P := P)
+
+/-- `Gini` factors through the law of the underlying random variable. -/
+theorem Gini_factorsThroughLaw : FactorsThroughLaw P (Gini P) := by
+  refine ⟨fun μ => by
+    let _ : IsProbabilityMeasure μ.1 := μ.2
+    exact distGini μ.1, ?_⟩
+  intro X
+  rfl
+
+/-- `Gini` is law-invariant. -/
+theorem Gini_lawInvariant : LawInvariant P (Gini P) :=
+  Gini_factorsThroughLaw (P := P) |>.lawInvariant (P := P)
 
 end
 

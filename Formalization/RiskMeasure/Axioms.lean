@@ -42,9 +42,22 @@ def Normalized [Zero X] [Zero C] (ρ : X → C) : Prop :=
 def CashAdditive [AddMonoid X] [AddMonoid C] (cash : C →+ X) (ρ : X → C) : Prop :=
   ∀ x m, ρ (x + cash m) = ρ x + m
 
+/-- Monetary risk measures are exactly the monotone cash-additive ones. -/
+def Monetary [Preorder X] [Preorder C] [AddMonoid X] [AddMonoid C]
+    (cash : C →+ X) (ρ : X → C) : Prop :=
+  Monotone ρ ∧ CashAdditive cash ρ
+
 /-- Subadditivity. -/
 def Subadditive [Add X] [Preorder C] [Add C] (ρ : X → C) : Prop :=
   ∀ (x y : X), ρ (x + y) ≤ ρ x + ρ y
+
+/-- Additivity restricted to a chosen compatibility relation on positions. -/
+def AdditiveOn [Add X] [Add C] (r : X → X → Prop) (ρ : X → C) : Prop :=
+  ∀ ⦃x y : X⦄, r x y → ρ (x + y) = ρ x + ρ y
+
+/-- Comonotone additivity, parametrized by the underlying notion of comonotonicity. -/
+def ComonotoneAdditive [Add X] [Add C] (r : X → X → Prop) (ρ : X → C) : Prop :=
+  AdditiveOn r ρ
 
 /-- Submodularity on a lattice. -/
 def Submodular [SemilatticeInf X] [SemilatticeSup X] [Preorder C] [Add C] (ρ : X → C) : Prop :=

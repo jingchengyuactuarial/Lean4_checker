@@ -1,6 +1,5 @@
-import Formalization.RiskMeasure.Basic
+import Formalization.RiskMeasure.Axioms
 import Formalization.RiskMeasure.RandomVariable
-import Formalization.RiskMeasure.Bounded
 import Formalization.RiskMeasure.Common
 import Formalization.RiskMeasure.LawInvariant
 import Formalization.RiskMeasure.Indicators

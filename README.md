@@ -15,12 +15,18 @@ Standalone Lean 4 project for reusable risk-measure foundations, built on top of
 
 The current risk-measure layer defines:
 
+- `CE` as the generalized-inverse certainty equivalent `ℓ⁻¹(E[ℓ(X)])`;
 - `VaR` from the lower quantile induced by `ProbabilityTheory.cdf`;
 - `ES` as the normalized integral of `VaR` over the tail;
 - `ESg` and `AES` as supremum envelopes of penalized expected shortfall;
+- `OCE` as the infimum envelope `inf_m (m + E[ℓ(X - m)])`;
+- `ShortfallRisk` as the acceptance-threshold version `inf {m | E[ℓ(X-m)] ≤ r}`;
+- distortion / spectral / Choquet risk measures through bundled distortion functions and
+  probability measures on confidence levels;
 - `MAD` as mean absolute deviation around the mean;
 - `median` as the lower median, i.e. the `1/2` quantile;
 - `MMD` as mean median deviation around that median;
+- `Gini` as the Gini mean difference `E |X - X'|`;
 - `variance` by directly reusing `mathlib`'s `Var[X; P]`.
 
 The current random-variable API works on the subtype of almost-everywhere measurable real-valued
@@ -45,14 +51,15 @@ lake build
 
 - `Formalization/RiskMeasure/Axioms.lean`
 - `Formalization/RiskMeasure/RandomVariable.lean`
+- `Formalization/RiskMeasure/CertaintyEquivalent.lean`
 - `Formalization/RiskMeasure/Quantile.lean`
 - `Formalization/RiskMeasure/Shortfall.lean`
+- `Formalization/RiskMeasure/Distortion.lean`
 - `Formalization/RiskMeasure/Deviation.lean`
 - `Formalization/RiskMeasure/LawInvariant.lean`
 - `Formalization/RiskMeasure/Indicators.lean`
 - `Formalization/RiskMeasure/SetFunctions.lean`
 - `Formalization/RiskMeasure/Atomless.lean`
-- `Formalization/RiskMeasure/Basic.lean` as a compatibility shim
 - `Formalization/RiskMeasure/Common.lean` as a convenience re-export
 - `Formalization/AesSubmodularity.lean`
 

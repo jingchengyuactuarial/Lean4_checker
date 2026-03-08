@@ -48,6 +48,22 @@ def distESProfileContinuous (μ : Measure ℝ) [IsProbabilityMeasure μ] : Prop 
 def distESg (μ : Measure ℝ) [IsProbabilityMeasure μ] (g : Level → ℝ) : ℝ :=
   sSup (Set.range fun p : Level => distES μ p - g p)
 
+/-- The OCE objective associated with a loss function `ℓ` and cash level `m`. -/
+def distOCEObjective (μ : Measure ℝ) (ℓ : ℝ → ℝ) (m : ℝ) : ℝ :=
+  m + ∫ x, ℓ (x - m) ∂μ
+
+/-- Distribution-level optimized certainty equivalent. -/
+def distOCE (μ : Measure ℝ) [IsProbabilityMeasure μ] (ℓ : ℝ → ℝ) : ℝ :=
+  sInf (Set.range (distOCEObjective μ ℓ))
+
+/-- Acceptance set for the shortfall risk induced by `ℓ` and threshold `r`. -/
+def distShortfallAcceptance (μ : Measure ℝ) (ℓ : ℝ → ℝ) (r : ℝ) : Set ℝ :=
+  {m : ℝ | ∫ x, ℓ (x - m) ∂μ ≤ r}
+
+/-- Distribution-level shortfall risk. -/
+def distShortfallRisk (μ : Measure ℝ) [IsProbabilityMeasure μ] (ℓ : ℝ → ℝ) (r : ℝ) : ℝ :=
+  sInf (distShortfallAcceptance μ ℓ r)
+
 /-- Adjusted expected shortfall at the distribution level. -/
 abbrev distAES (μ : Measure ℝ) [IsProbabilityMeasure μ] (g : Level → ℝ) : ℝ :=
   distESg μ g
@@ -106,6 +122,20 @@ theorem ESProfile_lawInvariant : LawInvariant P (ESProfile P) :=
 def ESg (g : Level → ℝ) (X : RandomVariable P) : ℝ :=
   distESg (law P X) g
 
+/-- Optimized certainty equivalent for random variables. -/
+def OCE (ℓ : ℝ → ℝ) (X : RandomVariable P) : ℝ :=
+  distOCE (law P X) ℓ
+
+/-- Shortfall risk for random variables. -/
+def ShortfallRisk (ℓ : ℝ → ℝ) (r : ℝ) (X : RandomVariable P) : ℝ :=
+  distShortfallRisk (law P X) ℓ r
+
+/-- Long-form alias for `ShortfallRisk`. -/
+abbrev ShortfallMeasure := ShortfallRisk P
+
+/-- Long-form alias for `OCE`. -/
+abbrev OptimizedCertaintyEquivalent := OCE P
+
 /-- `ESg` factors through the law of the underlying random variable. -/
 theorem ESg_factorsThroughLaw (g : Level → ℝ) : FactorsThroughLaw P (ESg P g) := by
   refine ⟨fun μ => by
@@ -117,6 +147,32 @@ theorem ESg_factorsThroughLaw (g : Level → ℝ) : FactorsThroughLaw P (ESg P g
 /-- `ESg` is law-invariant. -/
 theorem ESg_lawInvariant (g : Level → ℝ) : LawInvariant P (ESg P g) :=
   (ESg_factorsThroughLaw (P := P) g).lawInvariant (P := P)
+
+/-- `OCE` factors through the law of the underlying random variable. -/
+theorem OCE_factorsThroughLaw (ℓ : ℝ → ℝ) : FactorsThroughLaw P (OCE P ℓ) := by
+  refine ⟨fun μ => by
+    let _ : IsProbabilityMeasure μ.1 := μ.2
+    exact distOCE μ.1 ℓ, ?_⟩
+  intro X
+  rfl
+
+/-- `OCE` is law-invariant. -/
+theorem OCE_lawInvariant (ℓ : ℝ → ℝ) : LawInvariant P (OCE P ℓ) :=
+  (OCE_factorsThroughLaw (P := P) ℓ).lawInvariant (P := P)
+
+/-- `ShortfallRisk` factors through the law of the underlying random variable. -/
+theorem ShortfallRisk_factorsThroughLaw (ℓ : ℝ → ℝ) (r : ℝ) :
+    FactorsThroughLaw P (ShortfallRisk P ℓ r) := by
+  refine ⟨fun μ => by
+    let _ : IsProbabilityMeasure μ.1 := μ.2
+    exact distShortfallRisk μ.1 ℓ r, ?_⟩
+  intro X
+  rfl
+
+/-- `ShortfallRisk` is law-invariant. -/
+theorem ShortfallRisk_lawInvariant (ℓ : ℝ → ℝ) (r : ℝ) :
+    LawInvariant P (ShortfallRisk P ℓ r) :=
+  (ShortfallRisk_factorsThroughLaw (P := P) ℓ r).lawInvariant (P := P)
 
 /-- Adjusted expected shortfall for random variables. -/
 abbrev AES (g : Level → ℝ) (X : RandomVariable P) : ℝ :=
