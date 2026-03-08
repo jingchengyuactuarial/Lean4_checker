@@ -728,6 +728,24 @@ theorem indicatorAESProbabilityProfile_zero_eq_zero
   rw [← hempty, happly, scaledIndicatorRV_empty_eq_zero]
   exact AES_zero_eq_zero (P := P) g hg0 hgnonneg
 
+/-- The real image of the zero set `{p : Level | g p = 0}`. This is the set whose supremum
+appears in the infinite-left AES statement. -/
+def zeroSetReal (g : Level → ℝ) : Set ℝ := {x : ℝ | ∃ p : Level, (p : ℝ) = x ∧ g p = 0}
+
+/-- If `p₀` is the least upper bound of the zero set of `g`, then every level strictly above `p₀`
+has strictly positive penalty, provided `g ≥ 0`. -/
+theorem positive_of_gt_isLUB_zeroSetReal
+    (g : Level → ℝ) {p0 : ℝ} (hsup : IsLUB (zeroSetReal g) p0)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) {q : Level} (hp0q : p0 < (q : ℝ)) :
+    0 < g q := by
+  have hq_ne : g q ≠ 0 := by
+    intro hq_zero
+    have hq_mem : (q : ℝ) ∈ zeroSetReal g := ⟨q, rfl, hq_zero⟩
+    have hupper : p0 ∈ upperBounds (zeroSetReal g) := hsup.1
+    have hq_le : (q : ℝ) ≤ p0 := hupper hq_mem
+    linarith
+  exact lt_of_le_of_ne (hgnonneg q) (Ne.symm hq_ne)
+
 /-- If `g` is bounded above by `M` on `[0,1]`, then the indicator-level AES closed form enjoys a
 uniform positive lower bound on `(0,1]` as soon as `c > M`. This is the quantitative ingredient
 behind the `p₀ < 1` contradiction in the finite-penalty case. -/
@@ -1377,6 +1395,23 @@ theorem infiniteLeft_indicatorAES_contradiction_of_submodular_eventuallyLarge
   rcases htail with ⟨bar, hq0bar, hbar1, hlarge⟩
   exact infiniteLeft_indicatorAES_contradiction_of_submodular_cutoff_of_lambda (P := P) hsplit
     g hc hsub hg0 hmono hgnonneg hq0p1 hq0bar hbar1 hq0pos hlarge hp1 hc_large
+
+/-- Version of the previous contradiction theorem where the positivity of `g q₀` is discharged
+from the statement that `p₀` is the supremum of the zero set of `g`. -/
+theorem infiniteLeft_indicatorAES_contradiction_of_submodular_eventuallyLarge_of_isLUB
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c p0 : ℝ}
+    (hc : 0 < c) (hsub : Submodular (AES P g)) (hg0 : g 0 = 0)
+    (hmono : _root_.Monotone g) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hsup : IsLUB (zeroSetReal g) p0)
+    {q0 p1 : Level} (hp0q0 : p0 < (q0 : ℝ)) (hq0p1 : (q0 : ℝ) < (p1 : ℝ))
+    (hp1 : (p1 : ℝ) < 1)
+    (hc_large : g p1 * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) < c)
+    (htail : ∃ bar : Level, (q0 : ℝ) < (bar : ℝ) ∧ (bar : ℝ) < 1 ∧
+      ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p) :
+    False := by
+  have hq0pos := positive_of_gt_isLUB_zeroSetReal g hsup hgnonneg hp0q0
+  exact infiniteLeft_indicatorAES_contradiction_of_submodular_eventuallyLarge (P := P) hsplit g
+    hc hsub hg0 hmono hgnonneg hq0p1 hq0pos hp1 hc_large htail
 
 /-- Infinite-left contradiction template with the origin value discharged automatically by
 `g(0) = 0`. -/
