@@ -7,11 +7,13 @@ Standalone Lean 4 project for reusable risk-measure foundations, built on top of
 - abstract axioms for monotone, cash-additive, subadditive, submodular, supermodular,
   convex, and coherent risk measures;
 - concrete distribution-level and random-variable-level definitions for common risk measures;
+- AES-proof support modules for law invariance, indicator positions, set-function profiles,
+  and stronger atomless splitting hypotheses;
 - a placeholder entry point for the AES submodularity project.
 
 ## Implemented risk measures
 
-The current `Formalization/RiskMeasure/Common.lean` module defines:
+The current risk-measure layer defines:
 
 - `VaR` from the lower quantile induced by `ProbabilityTheory.cdf`;
 - `ES` as the normalized integral of `VaR` over the tail;
@@ -24,6 +26,14 @@ The current `Formalization/RiskMeasure/Common.lean` module defines:
 The current random-variable API works on the subtype of almost-everywhere measurable real-valued
 functions under a fixed probability measure `P`.
 
+For the AES proof specifically, the repository now also isolates:
+
+- law invariance as a standalone property;
+- event indicators and scaled indicators `c 1_A`;
+- probability-profile and decreasing-increments abstractions for set functions;
+- a project-level strong atomless splitting property, since `mathlib`'s `NoAtoms` is weaker than
+  the exact splitting used in the paper proof.
+
 ## Quick start
 
 ```bash
@@ -33,8 +43,17 @@ lake build
 
 ## Current module layout
 
-- `Formalization/RiskMeasure/Basic.lean`
-- `Formalization/RiskMeasure/Common.lean`
+- `Formalization/RiskMeasure/Axioms.lean`
+- `Formalization/RiskMeasure/RandomVariable.lean`
+- `Formalization/RiskMeasure/Quantile.lean`
+- `Formalization/RiskMeasure/Shortfall.lean`
+- `Formalization/RiskMeasure/Deviation.lean`
+- `Formalization/RiskMeasure/LawInvariant.lean`
+- `Formalization/RiskMeasure/Indicators.lean`
+- `Formalization/RiskMeasure/SetFunctions.lean`
+- `Formalization/RiskMeasure/Atomless.lean`
+- `Formalization/RiskMeasure/Basic.lean` as a compatibility shim
+- `Formalization/RiskMeasure/Common.lean` as a convenience re-export
 - `Formalization/AesSubmodularity.lean`
 
 ## References

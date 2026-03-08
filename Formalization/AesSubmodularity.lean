@@ -1,4 +1,4 @@
-import Formalization.RiskMeasure.Basic
+import Formalization.RiskMeasure
 
 namespace AesSubmodularity
 
@@ -7,9 +7,13 @@ This file is the entry point for the Lean formalization of the AES submodularity
 result from `../aes_submodularity_proof.tex`.
 
 Planned layers:
-1. Reuse the generic risk-measure API from `Formalization.RiskMeasure.Basic`.
-2. Isolate generic lemmas about submodularity, concavity, and atomless spaces.
-3. Formalize the theorem after choosing a Lean-friendly ES/AES interface.
+1. Reuse the abstract axioms from `Formalization.RiskMeasure.Axioms`.
+2. Use the random-variable, law-invariance, and indicator modules to encode
+   the event-based reductions appearing in the paper proof.
+3. Isolate the bridge from event submodularity to one-dimensional concavity on
+   `[0,1]`, together with the stronger atomless splitting property the proof
+   actually uses.
+4. Formalize the AES theorem on top of the quantile/ES/AES interface.
 -/
 
 example : True := trivial
