@@ -588,6 +588,29 @@ theorem indicatorAESProbabilityProfile_eq_indicatorAESClosedForm
   simpa [indicatorAESSetFunction, hAreal] using
     AES_scaledIndicatorRV_eq_indicatorAESClosedForm (P := P) g c hc hA hA_pos
 
+/-- At the origin, the AES indicator probability profile vanishes under the normalized penalty
+assumptions `g(0) = 0` and `g ≥ 0`. -/
+theorem indicatorAESProbabilityProfile_zero_eq_zero
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) (c : ℝ)
+    (hg0 : g 0 = 0) (hgnonneg : ∀ p : Level, 0 ≤ g p) :
+    indicatorAESProbabilityProfile P hsplit g c 0 = 0 := by
+  have hprofile :
+      EventProfile P (indicatorAESSetFunction P g c)
+        (indicatorAESProbabilityProfile P hsplit g c) :=
+    EventProfile.of_dependsOnlyOnProbability (P := P) hsplit
+      (dependsOnlyOnProbability_scaledIndicatorSetFunction (P := P) (ρ := AES P g)
+        (AES_lawInvariant (P := P) g) c)
+  have hempty :
+      indicatorAESSetFunction P g c ∅ = indicatorAESProbabilityProfile P hsplit g c 0 := by
+    simpa [indicatorAESProbabilityProfile, indicatorAESSetFunction, Measure.real] using
+      (hprofile (A := ∅) MeasurableSet.empty)
+  have happly :
+      indicatorAESSetFunction P g c ∅ = AES P g (scaledIndicatorRV P c ∅ MeasurableSet.empty) := by
+    simpa [indicatorAESSetFunction] using
+      (scaledIndicatorSetFunction_apply (P := P) (ρ := AES P g) c (A := ∅) MeasurableSet.empty)
+  rw [← hempty, happly, scaledIndicatorRV_empty_eq_zero]
+  exact AES_zero_eq_zero (P := P) g hg0 hgnonneg
+
 /-- If `g` is bounded above by `M` on `[0,1]`, then the indicator-level AES closed form enjoys a
 uniform positive lower bound on `(0,1]` as soon as `c > M`. This is the quantitative ingredient
 behind the `p₀ < 1` contradiction in the finite-penalty case. -/
@@ -765,6 +788,18 @@ theorem finitePenalty_indicatorAES_contradiction_of_continuousAt_zero
   exact indicatorAESProbabilityProfile_lowerBound_of_bddAbove (P := P) hsplit g hc ht0 ht1
     hgnonneg hg
 
+/-- Finite-penalty contradiction template with the origin value discharged automatically by the
+normalized-penalty assumptions. -/
+theorem finitePenalty_indicatorAES_contradiction
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c M : ℝ}
+    (hc : 0 < c) (hcM : M < c)
+    (hg0 : g 0 = 0) (hcont : ContinuousAt (indicatorAESProbabilityProfile P hsplit g c) 0)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) (hg : ∀ p : Level, g p ≤ M) :
+    False := by
+  refine finitePenalty_indicatorAES_contradiction_of_continuousAt_zero (P := P) hsplit g hc hcM ?_
+    hcont hgnonneg hg
+  exact indicatorAESProbabilityProfile_zero_eq_zero (P := P) hsplit g c hg0 hgnonneg
+
 /-- If the penalty vanishes at a level `r`, then the indicator-level AES closed form dominates the
 corresponding lower-bound line near the origin. This is the lower-bound half of the origin-slope
 argument in the infinite-left AES proof. -/
@@ -909,6 +944,24 @@ theorem infiniteLeft_indicatorAES_contradiction_of_concave_originSlope
       indicatorAESProbabilityProfile_ratio_ge_at_level (P := P) hsplit g hc hgnonneg hp1
     exact lt_of_lt_of_le hpoint hlower
   exact not_tendsto_ratio_nhdsWithin_zero_of_antitoneOn_above hanti ht1 hratio hlim
+
+/-- Infinite-left contradiction template with the origin value discharged automatically by
+`g(0) = 0`. -/
+theorem infiniteLeft_indicatorAES_contradiction
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c p0 : ℝ}
+    (hc : 0 < c) (hp0 : p0 ∈ Set.Icc (0 : ℝ) 1) (hg0 : g 0 = 0)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hconc :
+      ConcaveOn ℝ (Set.Icc (0 : ℝ) 1) (indicatorAESProbabilityProfile P hsplit g c))
+    (hlim :
+      Tendsto (fun t => indicatorAESProbabilityProfile P hsplit g c t / t)
+        (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds (c / (1 - p0))))
+    {p1 : Level} (hp0p1 : p0 < (p1 : ℝ)) (hp1 : (p1 : ℝ) < 1)
+    (hpoint : c / (1 - p0) < (c - g p1) / (1 - (p1 : ℝ))) :
+    False := by
+  refine infiniteLeft_indicatorAES_contradiction_of_concave_originSlope (P := P) hsplit g hc hp0
+    hgnonneg hconc ?_ hlim hp0p1 hp1 hpoint
+  exact indicatorAESProbabilityProfile_zero_eq_zero (P := P) hsplit g c hg0 hgnonneg
 
 end EventProfiles
 

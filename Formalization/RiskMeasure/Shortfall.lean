@@ -70,6 +70,137 @@ def distShortfallRisk (μ : Measure ℝ) [IsProbabilityMeasure μ] (ℓ : ℝ �
 abbrev distAES (μ : Measure ℝ) [IsProbabilityMeasure μ] (g : Level → ℝ) : ℝ :=
   distESg μ g
 
+/-- The cdf of the point mass at `0` vanishes strictly to the left of the origin. -/
+private theorem cdf_dirac_zero_of_lt_zero {x : ℝ} (hx : x < 0) :
+    ProbabilityTheory.cdf (Measure.dirac (0 : ℝ)) x = 0 := by
+  rw [ProbabilityTheory.cdf_eq_real, measureReal_def, Measure.dirac_apply' _ measurableSet_Iic]
+  simp [not_le.mpr hx]
+
+/-- The cdf of the point mass at `0` equals `1` on and to the right of the origin. -/
+private theorem cdf_dirac_zero_of_nonneg {x : ℝ} (hx : 0 ≤ x) :
+    ProbabilityTheory.cdf (Measure.dirac (0 : ℝ)) x = 1 := by
+  rw [ProbabilityTheory.cdf_eq_real, measureReal_def, Measure.dirac_apply' _ measurableSet_Iic]
+  simp [hx]
+
+/-- Every lower quantile of `δ₀` on `(0,1]` equals `0`. -/
+theorem distLowerQuantile_dirac_zero_eq_zero {q : ℝ} (hq : q ∈ Set.Ioc (0 : ℝ) 1) :
+    distLowerQuantile (Measure.dirac (0 : ℝ)) q = 0 := by
+  let S : Set ℝ := {x : ℝ | q ≤ ProbabilityTheory.cdf (Measure.dirac (0 : ℝ)) x}
+  change sInf S = 0
+  apply le_antisymm
+  · refine csInf_le ?_ ?_
+    · refine ⟨0, ?_⟩
+      intro x hx
+      by_contra hxneg
+      have hxlt : x < 0 := lt_of_not_ge hxneg
+      have hcdf : ProbabilityTheory.cdf (Measure.dirac (0 : ℝ)) x = 0 :=
+        cdf_dirac_zero_of_lt_zero hxlt
+      have : q ≤ 0 := by simpa [S, hcdf] using hx
+      exact (not_le_of_gt hq.1) this
+    · have hcdf0 : ProbabilityTheory.cdf (Measure.dirac (0 : ℝ)) 0 = 1 :=
+        cdf_dirac_zero_of_nonneg le_rfl
+      have : q ≤ 1 := hq.2
+      simpa [S, hcdf0] using this
+  · refine le_csInf ?_ ?_
+    · refine ⟨0, ?_⟩
+      have hcdf0 : ProbabilityTheory.cdf (Measure.dirac (0 : ℝ)) 0 = 1 :=
+        cdf_dirac_zero_of_nonneg le_rfl
+      have : q ≤ 1 := hq.2
+      simpa [S, hcdf0] using this
+    · intro x hx
+      by_contra hxneg
+      have hxlt : x < 0 := lt_of_not_ge hxneg
+      have hcdf : ProbabilityTheory.cdf (Measure.dirac (0 : ℝ)) x = 0 :=
+        cdf_dirac_zero_of_lt_zero hxlt
+      have : q ≤ 0 := by simpa [S, hcdf] using hx
+      exact (not_le_of_gt hq.1) this
+
+/-- The integral term in the quantile representation of `ES` vanishes for `δ₀`. -/
+theorem distESIntegral_dirac_zero_eq_zero (p : Level) :
+    distESIntegral (Measure.dirac (0 : ℝ)) p = 0 := by
+  rw [distESIntegral]
+  calc
+    ∫ q in (p : ℝ)..1, distLowerQuantile (Measure.dirac (0 : ℝ)) q =
+        ∫ q in (p : ℝ)..1, (0 : ℝ) := by
+          refine intervalIntegral.integral_congr_ae ?_
+          filter_upwards [] with q
+          intro hq
+          have hp1 : (p : ℝ) ≤ 1 := p.2.2
+          have hqIoc : q ∈ Set.Ioc (p : ℝ) 1 := by
+            simpa [Set.uIoc, hp1] using hq
+          have hq' : q ∈ Set.Ioc (0 : ℝ) 1 := by
+            exact ⟨lt_of_le_of_lt p.2.1 hqIoc.1, hqIoc.2⟩
+          exact distLowerQuantile_dirac_zero_eq_zero hq'
+    _ = 0 := by simp
+
+/-- The endpoint branch of `ES` vanishes for `δ₀`. -/
+theorem distUpperQuantile_dirac_zero_eq_zero :
+    distUpperQuantile (Measure.dirac (0 : ℝ)) = 0 := by
+  unfold distUpperQuantile
+  rw [essSup_eq_sInf]
+  let S : Set ℝ := {a : ℝ | Measure.dirac (0 : ℝ) {x : ℝ | a < x} = 0}
+  refine le_antisymm ?_ ?_
+  · refine csInf_le ?_ ?_
+    · change BddBelow S
+      refine ⟨0, ?_⟩
+      intro b hb
+      by_contra hneg
+      have hbgt : b < 0 := lt_of_not_ge hneg
+      have hval : Measure.dirac (0 : ℝ) {x : ℝ | b < x} = 1 := by
+        change Measure.dirac (0 : ℝ) (Set.Ioi b) = 1
+        rw [Measure.dirac_apply' _ measurableSet_Ioi]
+        simp [hbgt]
+      rw [show b ∈ S from hb] at hval
+      simp at hval
+    · change 0 ∈ S
+      change Measure.dirac (0 : ℝ) (Set.Ioi 0) = 0
+      rw [Measure.dirac_apply' _ measurableSet_Ioi]
+      simp
+  · refine le_csInf ?_ ?_
+    · exact ⟨0, by
+        change Measure.dirac (0 : ℝ) (Set.Ioi 0) = 0
+        rw [Measure.dirac_apply' _ measurableSet_Ioi]
+        simp⟩
+    · intro b hb
+      by_contra hneg
+      have hbgt : b < 0 := lt_of_not_ge hneg
+      have hval : Measure.dirac (0 : ℝ) {x : ℝ | b < x} = 1 := by
+        change Measure.dirac (0 : ℝ) (Set.Ioi b) = 1
+        rw [Measure.dirac_apply' _ measurableSet_Ioi]
+        simp [hbgt]
+      rw [show b ∈ S from hb] at hval
+      simp at hval
+
+/-- Expected shortfall vanishes on the point mass at `0`. -/
+theorem distES_dirac_zero_eq_zero (p : Level) :
+    distES (Measure.dirac (0 : ℝ)) p = 0 := by
+  by_cases hp : (p : ℝ) < 1
+  · simp [distES, hp, distESIntegral_dirac_zero_eq_zero]
+  · simp [distES, hp, distUpperQuantile_dirac_zero_eq_zero]
+
+/-- The AES envelope vanishes on `δ₀` whenever the penalty is nonnegative and normalized at `0`. -/
+theorem distESg_dirac_zero_eq_zero (g : Level → ℝ) (hg0 : g 0 = 0)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) :
+    distESg (Measure.dirac (0 : ℝ)) g = 0 := by
+  unfold distESg
+  apply le_antisymm
+  · refine csSup_le ?_ ?_
+    · exact ⟨0, ⟨(0 : Level), by simp [distES_dirac_zero_eq_zero, hg0]⟩⟩
+    · intro y hy
+      rcases hy with ⟨p, rfl⟩
+      have hgp := hgnonneg p
+      have hes : distES (Measure.dirac (0 : ℝ)) p = 0 := distES_dirac_zero_eq_zero p
+      linarith
+  · refine le_csSup ?_ ?_
+    · change BddAbove (Set.range fun p : Level => distES (Measure.dirac (0 : ℝ)) p - g p)
+      refine ⟨0, ?_⟩
+      intro y hy
+      rcases hy with ⟨p, rfl⟩
+      have hgp := hgnonneg p
+      have hes : distES (Measure.dirac (0 : ℝ)) p = 0 := distES_dirac_zero_eq_zero p
+      linarith
+    · exact ⟨(0 : Level), by simp [distES_dirac_zero_eq_zero, hg0]⟩
+
 section
 
 variable {Ω : Type*} [MeasurableSpace Ω]
@@ -217,6 +348,23 @@ theorem AES_factorsThroughLaw (g : Level → ℝ) : FactorsThroughLaw P (AES P g
 /-- `AES` is law-invariant. -/
 theorem AES_lawInvariant (g : Level → ℝ) : LawInvariant P (AES P g) :=
   ESg_lawInvariant (P := P) g
+
+/-- The law of the zero random variable is the point mass at `0`. -/
+@[simp] theorem law_zero_eq_dirac_zero : law P (0 : RandomVariable P) = Measure.dirac (0 : ℝ) := by
+  change Measure.map (fun _ : Ω => (0 : ℝ)) P = Measure.dirac (0 : ℝ)
+  rw [Measure.map_const]
+  simp
+
+/-- Expected shortfall vanishes on the zero position. -/
+@[simp] theorem ES_zero_eq_zero (p : Level) : ES P p 0 = 0 := by
+  simpa [ES] using (distES_dirac_zero_eq_zero p)
+
+/-- Adjusted expected shortfall vanishes on the zero position under the normalized penalty
+assumptions used in the AES paper. -/
+@[simp] theorem AES_zero_eq_zero (g : Level → ℝ) (hg0 : g 0 = 0)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) :
+    AES P g 0 = 0 := by
+  simpa [AES, ESg] using (distESg_dirac_zero_eq_zero g hg0 hgnonneg)
 
 end
 

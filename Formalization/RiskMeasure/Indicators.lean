@@ -58,6 +58,12 @@ def scaledIndicatorRV (P : Measure Ω) (c : ℝ) (A : Set Ω) (hA : MeasurableSe
   simpa [scaledIndicator_eq_indicator_const (Ω := Ω) c A] using
     (Measurable.indicator measurable_const hA).aemeasurable
 
+/-- The scaled indicator of the empty event is the zero random variable. -/
+@[simp] theorem scaledIndicatorRV_empty_eq_zero (P : Measure Ω) (c : ℝ) :
+    scaledIndicatorRV P c ∅ MeasurableSet.empty = 0 := by
+  ext ω
+  simp [scaledIndicatorRV]
+
 omit [MeasurableSpace Ω] in
 /-- For nonnegative payoff levels, intersection corresponds to pointwise minimum. -/
 theorem scaledIndicator_inf_eq_inter (hc : 0 ≤ c) (A B : Set Ω) :
