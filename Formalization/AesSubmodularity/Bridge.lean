@@ -629,6 +629,33 @@ theorem indicatorAESProbabilityProfile_bddBelow_on_Ioc_of_bddAbove
     indicatorAESProbabilityProfile_pos_of_bddAbove (P := P) hsplit g hc hcM ht.1 ht.2
       hgnonneg hg
 
+/-- Lean-compilable finite-penalty bridge for the AES contradiction argument.
+
+This packages the pieces that remain valid after removing the incorrect
+`concave on [0,1] -> continuous at 0` step from the paper draft:
+the indicator probability profile has decreasing increments, midpoint concavity,
+and uniform two-sided bounds on positive masses. -/
+theorem finitePenalty_indicatorAESProfile_bridge
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c M : ℝ}
+    (hc : 0 < c) (hcM : M < c) (hsub : Submodular (AES P g))
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) (hg : ∀ p : Level, g p ≤ M) :
+    DecreasingIncrements (indicatorAESProbabilityProfile P hsplit g c) ∧
+      (∀ ⦃x y : ℝ⦄, x ∈ Set.Icc (0 : ℝ) 1 → y ∈ Set.Icc (0 : ℝ) 1 →
+        indicatorAESProbabilityProfile P hsplit g c (midpoint ℝ x y) ≥
+          midpoint ℝ (indicatorAESProbabilityProfile P hsplit g c x)
+            (indicatorAESProbabilityProfile P hsplit g c y)) ∧
+      BddAbove (indicatorAESProbabilityProfile P hsplit g c '' Set.Ioc (0 : ℝ) 1) ∧
+      BddBelow (indicatorAESProbabilityProfile P hsplit g c '' Set.Ioc (0 : ℝ) 1) := by
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · exact decreasingIncrements_indicatorAESProbabilityProfile (P := P) hsplit g
+      (le_of_lt hc) hsub
+  · intro x y hx hy
+    exact midpoint_ge_average_indicatorAESProbabilityProfile (P := P) hsplit g
+      (le_of_lt hc) hsub hx hy
+  · exact indicatorAESProbabilityProfile_bddAbove_on_Ioc (P := P) hsplit g hc hgnonneg
+  · exact indicatorAESProbabilityProfile_bddBelow_on_Ioc_of_bddAbove (P := P)
+      hsplit g hc hcM hgnonneg hg
+
 end EventProfiles
 
 end AesSubmodularity
