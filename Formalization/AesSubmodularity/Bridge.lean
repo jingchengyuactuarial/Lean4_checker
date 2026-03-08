@@ -728,6 +728,103 @@ theorem indicatorAESProbabilityProfile_zero_eq_zero
   rw [← hempty, happly, scaledIndicatorRV_empty_eq_zero]
   exact AES_zero_eq_zero (P := P) g hg0 hgnonneg
 
+/-- The two-level test position used in the revised finite-penalty AES argument. -/
+def finiteCounterexampleX (P : Measure Ω) (eps lam : ℝ) (A B C : Set Ω)
+    (hA : MeasurableSet A) (hB : MeasurableSet B) (hC : MeasurableSet C) :
+    RandomVariable P :=
+  layeredIndicatorRV P eps lam A (A ∪ (B ∪ C)) hA (hA.union (hB.union hC))
+
+/-- The pure-indicator test position used in the revised finite-penalty AES argument. -/
+def finiteCounterexampleY (P : Measure Ω) (lam : ℝ) (A B : Set Ω)
+    (hA : MeasurableSet A) (hB : MeasurableSet B) :
+    RandomVariable P :=
+  scaledIndicatorRV P lam (A ∪ B) (hA.union hB)
+
+/-- The revised finite counterexample `X` has the expected three-point law. -/
+theorem law_finiteCounterexampleX_eq_layeredIndicatorLaw
+    (P : Measure Ω) [IsProbabilityMeasure P] (eps lam : ℝ) {A B C : Set Ω}
+    (hA : MeasurableSet A) (hB : MeasurableSet B) (hC : MeasurableSet C) :
+    law P (finiteCounterexampleX P eps lam A B C hA hB hC) =
+      layeredIndicatorLaw P eps lam A (A ∪ (B ∪ C)) := by
+  unfold finiteCounterexampleX
+  exact law_layeredIndicatorRV_eq_layeredIndicatorLaw (P := P) eps lam hA
+    (hA.union (hB.union hC)) (by intro ω hω; exact Or.inl hω)
+
+/-- The revised finite counterexample `Y` is still a plain scaled indicator. -/
+theorem law_finiteCounterexampleY_eq_scaledIndicatorLaw
+    (P : Measure Ω) [IsProbabilityMeasure P] (lam : ℝ) {A B : Set Ω}
+    (hA : MeasurableSet A) (hB : MeasurableSet B) :
+    law P (finiteCounterexampleY P lam A B hA hB) =
+      scaledIndicatorLaw P lam (A ∪ B) := by
+  unfold finiteCounterexampleY
+  exact law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) lam (hA.union hB)
+
+/-- The pointwise maximum of the finite-penalty test pair enlarges the high-payoff region from
+`A` to `A ∪ B`. -/
+theorem finiteCounterexample_sup
+    (P : Measure Ω) {eps lam : ℝ} (heps : 0 ≤ eps) (hepslam : eps ≤ lam)
+    {A B C : Set Ω} (hA : MeasurableSet A) (hB : MeasurableSet B) (hC : MeasurableSet C) :
+    finiteCounterexampleX P eps lam A B C hA hB hC ⊔ finiteCounterexampleY P lam A B hA hB =
+      layeredIndicatorRV P eps lam (A ∪ B) (A ∪ (B ∪ C))
+        (hA.union hB) (hA.union (hB.union hC)) := by
+  unfold finiteCounterexampleX finiteCounterexampleY
+  symm
+  refine layeredIndicatorRV_sup_eq_layeredIndicatorRV (P := P) heps hepslam
+    (hA := hA) (hE := hA.union hB) (hD := hA.union (hB.union hC)) ?_ ?_
+  · intro ω hω
+    exact Or.inl hω
+  · intro ω hω
+    rcases hω with hω | hω
+    · exact Or.inl hω
+    · exact Or.inr (Or.inl hω)
+
+/-- The pointwise minimum of the finite-penalty test pair cuts the support down from
+`A ∪ B ∪ C` to `A ∪ B`, while keeping the high-payoff region equal to `A`. -/
+theorem finiteCounterexample_inf
+    (P : Measure Ω) {eps lam : ℝ} (heps : 0 ≤ eps) (hepslam : eps ≤ lam)
+    {A B C : Set Ω} (hA : MeasurableSet A) (hB : MeasurableSet B) (hC : MeasurableSet C) :
+    finiteCounterexampleX P eps lam A B C hA hB hC ⊓ finiteCounterexampleY P lam A B hA hB =
+      layeredIndicatorRV P eps lam A (A ∪ B) hA (hA.union hB) := by
+  unfold finiteCounterexampleX finiteCounterexampleY
+  symm
+  refine layeredIndicatorRV_inf_eq_layeredIndicatorRV (P := P) heps hepslam
+    (hA := hA) (hE := hA.union hB) (hD := hA.union (hB.union hC)) ?_ ?_
+  · intro ω hω
+    exact Or.inl hω
+  · intro ω hω
+    rcases hω with hω | hω
+    · exact Or.inl hω
+    · exact Or.inr (Or.inl hω)
+
+/-- The pointwise maximum in the revised finite counterexample again has a three-point law. -/
+theorem law_finiteCounterexample_sup_eq_layeredIndicatorLaw
+    (P : Measure Ω) [IsProbabilityMeasure P] {eps lam : ℝ} (heps : 0 ≤ eps)
+    (hepslam : eps ≤ lam) {A B C : Set Ω}
+    (hA : MeasurableSet A) (hB : MeasurableSet B) (hC : MeasurableSet C) :
+    law P (finiteCounterexampleX P eps lam A B C hA hB hC ⊔
+      finiteCounterexampleY P lam A B hA hB) =
+      layeredIndicatorLaw P eps lam (A ∪ B) (A ∪ (B ∪ C)) := by
+  rw [finiteCounterexample_sup (P := P) heps hepslam hA hB hC]
+  exact law_layeredIndicatorRV_eq_layeredIndicatorLaw (P := P) eps lam (hA.union hB)
+    (hA.union (hB.union hC)) (by
+      intro ω hω
+      rcases hω with hω | hω
+      · exact Or.inl hω
+      · exact Or.inr (Or.inl hω))
+
+/-- The pointwise minimum in the revised finite counterexample also has an explicit three-point
+law. -/
+theorem law_finiteCounterexample_inf_eq_layeredIndicatorLaw
+    (P : Measure Ω) [IsProbabilityMeasure P] {eps lam : ℝ} (heps : 0 ≤ eps)
+    (hepslam : eps ≤ lam) {A B C : Set Ω}
+    (hA : MeasurableSet A) (hB : MeasurableSet B) (hC : MeasurableSet C) :
+    law P (finiteCounterexampleX P eps lam A B C hA hB hC ⊓
+      finiteCounterexampleY P lam A B hA hB) =
+      layeredIndicatorLaw P eps lam A (A ∪ B) := by
+  rw [finiteCounterexample_inf (P := P) heps hepslam hA hB hC]
+  exact law_layeredIndicatorRV_eq_layeredIndicatorLaw (P := P) eps lam hA (hA.union hB)
+    (by intro ω hω; exact Or.inl hω)
+
 /-- The real image of the zero set `{p : Level | g p = 0}`. This is the set whose supremum
 appears in the infinite-left AES statement. -/
 def zeroSetReal (g : Level → ℝ) : Set ℝ := {x : ℝ | ∃ p : Level, (p : ℝ) = x ∧ g p = 0}
@@ -970,6 +1067,18 @@ theorem finitePenalty_indicatorAES_contradiction
   refine finitePenalty_indicatorAES_contradiction_of_continuousAt_zero (P := P) hsplit g hc hcM ?_
     hcont hgnonneg hg
   exact indicatorAESProbabilityProfile_zero_eq_zero (P := P) hsplit g c hg0 hgnonneg
+
+/-- Lean-friendly finite-penalty non-submodularity statement, conditional on continuity of the
+indicator AES profile at the origin. This isolates the exact missing input in the original
+finite-case proof. -/
+theorem not_submodular_AES_of_finitePenalty_of_continuousAt_zero
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c M : ℝ}
+    (hc : 0 < c) (hcM : M < c) (hg0 : g 0 = 0)
+    (hcont : ContinuousAt (indicatorAESProbabilityProfile P hsplit g c) 0)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) (hg : ∀ p : Level, g p ≤ M) :
+    ¬ Submodular (AES P g) := by
+  intro hsub
+  exact finitePenalty_indicatorAES_contradiction (P := P) hsplit g hc hcM hg0 hcont hgnonneg hg
 
 /-- If the penalty vanishes at a level `r`, then the indicator-level AES closed form dominates the
 corresponding lower-bound line near the origin. This is the lower-bound half of the origin-slope
@@ -1465,6 +1574,21 @@ theorem infiniteLeft_indicatorAES_contradiction_of_submodular_leftLarge_of_isLUB
     exists_tailWitnessAbove_of_eventuallyLargeBeforeOne g hq01 htail
   exact infiniteLeft_indicatorAES_contradiction_of_submodular_eventuallyLarge_of_isLUB (P := P)
     hsplit g hc hsub hg0 hmono hgnonneg hsup hp0q0 hq0p1 hp1 hc_large htail'
+
+/-- Lean-friendly infinite-left non-submodularity statement for AES. This is the packaged form of
+the contradiction bridge proved above. -/
+theorem not_submodular_AES_of_leftLarge_of_isLUB
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c p0 : ℝ}
+    (hc : 0 < c) (hg0 : g 0 = 0) (hmono : _root_.Monotone g)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hsup : IsLUB (zeroSetReal g) p0) (htail : EventuallyLargeBeforeOne g c)
+    {q0 p1 : Level} (hp0q0 : p0 < (q0 : ℝ)) (hq0p1 : (q0 : ℝ) < (p1 : ℝ))
+    (hp1 : (p1 : ℝ) < 1)
+    (hc_large : g p1 * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) < c) :
+    ¬ Submodular (AES P g) := by
+  intro hsub
+  exact infiniteLeft_indicatorAES_contradiction_of_submodular_leftLarge_of_isLUB (P := P)
+    hsplit g hc hsub hg0 hmono hgnonneg hsup htail hp0q0 hq0p1 hp1 hc_large
 
 /-- Infinite-left contradiction template with the origin value discharged automatically by
 `g(0) = 0`. -/

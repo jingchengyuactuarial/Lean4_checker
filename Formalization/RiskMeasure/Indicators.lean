@@ -64,6 +64,18 @@ def scaledIndicatorRV (P : Measure Ω) (c : ℝ) (A : Set Ω) (hA : MeasurableSe
   ext ω
   simp [scaledIndicatorRV]
 
+/-- A two-level indicator position: value `high` on `A`, value `low` on `D \ A`, and `0`
+outside `D`. It is represented as a nested sum of scaled indicators. -/
+def layeredIndicatorRV (P : Measure Ω) (low high : ℝ) (A D : Set Ω)
+    (hA : MeasurableSet A) (hD : MeasurableSet D) : RandomVariable P :=
+  scaledIndicatorRV P low D hD + scaledIndicatorRV P (high - low) A hA
+
+@[simp] theorem layeredIndicatorRV_apply (P : Measure Ω) (low high : ℝ) (A D : Set Ω)
+    (hA : MeasurableSet A) (hD : MeasurableSet D) (ω : Ω) :
+    ((layeredIndicatorRV P low high A D hA hD : RandomVariable P) : Ω → ℝ) ω =
+      low * eventIndicator D ω + (high - low) * eventIndicator A ω := by
+  rfl
+
 omit [MeasurableSpace Ω] in
 /-- For nonnegative payoff levels, intersection corresponds to pointwise minimum. -/
 theorem scaledIndicator_inf_eq_inter (hc : 0 ≤ c) (A B : Set Ω) :
@@ -100,6 +112,54 @@ theorem scaledIndicatorRV_sup_eq_union (P : Measure Ω) {c : ℝ} (hc : 0 ≤ c)
   rw [← congrFun (scaledIndicator_sup_eq_union (Ω := Ω) hc A B) ω]
   rfl
 
+/-- Taking the pointwise maximum of a two-level position with a larger nested indicator expands
+its high-payoff region. -/
+theorem layeredIndicatorRV_sup_eq_layeredIndicatorRV
+    (P : Measure Ω) {low high : ℝ} (hlow : 0 ≤ low) (hlowhigh : low ≤ high)
+    {A E D : Set Ω} (hA : MeasurableSet A) (hE : MeasurableSet E) (hD : MeasurableSet D)
+    (hAE : A ⊆ E) (hED : E ⊆ D) :
+    layeredIndicatorRV P low high E D hE hD =
+      layeredIndicatorRV P low high A D hA hD ⊔ scaledIndicatorRV P high E hE := by
+  ext ω
+  by_cases hωA : ω ∈ A
+  · have hωE : ω ∈ E := hAE hωA
+    have hωD : ω ∈ D := hED hωE
+    have hsum : low + (high - low) = high := by ring
+    simp [layeredIndicatorRV, scaledIndicatorRV, hωA, hωE, hωD, hsum]
+  · by_cases hωE : ω ∈ E
+    · have hωD : ω ∈ D := hED hωE
+      have hsum : low + (high - low) = high := by ring
+      simp [layeredIndicatorRV, scaledIndicatorRV, hωA, hωE, hωD, hsum,
+        max_eq_right hlowhigh]
+    · by_cases hωD : ω ∈ D
+      · simp [layeredIndicatorRV, scaledIndicatorRV,
+            hωA, hωE, hωD, max_eq_left hlow]
+      · simp [layeredIndicatorRV, scaledIndicatorRV,
+            hωA, hωE, hωD]
+
+/-- Taking the pointwise minimum of a two-level position with a larger nested indicator cuts the
+support down to the smaller high-payoff region. -/
+theorem layeredIndicatorRV_inf_eq_layeredIndicatorRV
+    (P : Measure Ω) {low high : ℝ} (hlow : 0 ≤ low) (hlowhigh : low ≤ high)
+    {A E D : Set Ω} (hA : MeasurableSet A) (hE : MeasurableSet E) (hD : MeasurableSet D)
+    (hAE : A ⊆ E) (hED : E ⊆ D) :
+    layeredIndicatorRV P low high A E hA hE =
+      layeredIndicatorRV P low high A D hA hD ⊓ scaledIndicatorRV P high E hE := by
+  ext ω
+  by_cases hωA : ω ∈ A
+  · have hωE : ω ∈ E := hAE hωA
+    have hωD : ω ∈ D := hED hωE
+    have hsum : low + (high - low) = high := by ring
+    simp [layeredIndicatorRV, scaledIndicatorRV, hωA, hωE, hωD, hsum]
+  · by_cases hωE : ω ∈ E
+    · have hωD : ω ∈ D := hED hωE
+      simp [layeredIndicatorRV, scaledIndicatorRV, hωA, hωE, hωD, min_eq_left hlowhigh]
+    · by_cases hωD : ω ∈ D
+      · simp [layeredIndicatorRV, scaledIndicatorRV,
+            hωA, hωE, hωD, min_eq_right hlow]
+      · simp [layeredIndicatorRV, scaledIndicatorRV,
+            hωA, hωE, hωD]
+
 section Probability
 
 variable (P : Measure Ω) [IsProbabilityMeasure P]
@@ -108,6 +168,11 @@ variable (P : Measure Ω) [IsProbabilityMeasure P]
 `{0, c}`. -/
 def scaledIndicatorLaw (c : ℝ) (A : Set Ω) : Measure ℝ :=
   P A • Measure.dirac c + P Aᶜ • Measure.dirac 0
+
+/-- The law of a two-level indicator position supported on nested events `A ⊆ D`. It puts mass
+`P(A)` at the high level, mass `P(D \\ A)` at the low level, and the remaining mass at `0`. -/
+def layeredIndicatorLaw (low high : ℝ) (A D : Set Ω) : Measure ℝ :=
+  P A • Measure.dirac high + P (D \ A) • Measure.dirac low + P Dᶜ • Measure.dirac 0
 
 /-- If two measurable events have the same probability, then the corresponding scaled indicators
 have the same distribution. -/
@@ -171,6 +236,76 @@ theorem law_scaledIndicatorRV_eq_scaledIndicatorLaw (c : ℝ) {A : Set Ω} (hA :
     · rw [scaledIndicator_eq_indicator_const, Set.indicator_const_preimage_eq_union]
       rw [if_neg hc, if_neg h0, Set.empty_union]
       simp [hc, h0, Set.indicator_of_notMem]
+
+/-- Explicit three-point law of a two-level indicator position on nested events. -/
+theorem law_layeredIndicatorRV_eq_layeredIndicatorLaw
+    (low high : ℝ) {A D : Set Ω} (hA : MeasurableSet A) (hD : MeasurableSet D)
+    (hAD : A ⊆ D) :
+    law P (layeredIndicatorRV P low high A D hA hD) = layeredIndicatorLaw P low high A D := by
+  classical
+  have hdisj_A_diff : Disjoint A (D \ A) := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hωA hωDA
+    exact hωDA.2 hωA
+  have hdisj_diff_compl : Disjoint (D \ A) Dᶜ := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hωDA hωDc
+    exact hωDc hωDA.1
+  have hdisj_A_compl : Disjoint A Dᶜ := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hωA hωDc
+    exact hωDc (hAD hωA)
+  have hdisj_union_compl : Disjoint (A ∪ (D \ A)) Dᶜ := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hω hωDc
+    rcases hω with hωA | hωDA
+    · exact hωDc (hAD hωA)
+    · exact hωDc hωDA.1
+  ext s hs
+  have hpre :
+      ((layeredIndicatorRV P low high A D hA hD : RandomVariable P) : Ω → ℝ) ⁻¹' s =
+        (if high ∈ s then A else ∅) ∪
+          (if low ∈ s then D \ A else ∅) ∪
+            (if (0 : ℝ) ∈ s then Dᶜ else ∅) := by
+    ext ω
+    by_cases hωA : ω ∈ A
+    · have hωD : ω ∈ D := hAD hωA
+      simp [layeredIndicatorRV, scaledIndicatorRV, hωA, hωD]
+    · by_cases hωD : ω ∈ D
+      · simp [layeredIndicatorRV, scaledIndicatorRV, hωA, hωD]
+      · simp [layeredIndicatorRV, scaledIndicatorRV, hωA, hωD]
+  rw [law, Measure.map_apply_of_aemeasurable (layeredIndicatorRV P low high A D hA hD).2 hs, hpre,
+    layeredIndicatorLaw, Measure.add_apply, Measure.add_apply, Measure.smul_apply,
+    Measure.smul_apply, Measure.smul_apply, Measure.dirac_apply' _ hs, Measure.dirac_apply' _ hs,
+    Measure.dirac_apply' _ hs]
+  by_cases hhigh : high ∈ s <;> by_cases hlow : low ∈ s <;> by_cases h0 : (0 : ℝ) ∈ s
+  · rw [if_pos hhigh, if_pos hlow, if_pos h0]
+    calc
+      P ((A ∪ (D \ A)) ∪ Dᶜ) = P (A ∪ (D \ A)) + P Dᶜ := by
+        exact measure_union hdisj_union_compl hD.compl
+      _ = P A + P (D \ A) + P Dᶜ := by
+        rw [measure_union hdisj_A_diff (hD.diff hA)]
+      _ = P A * s.indicator 1 high + (P (D \ A) * s.indicator 1 low + P Dᶜ * s.indicator 1 0) := by
+        simp [hhigh, hlow, h0, add_assoc]
+      _ = P A • s.indicator 1 high + P (D \ A) • s.indicator 1 low + P Dᶜ • s.indicator 1 0 := by
+        simp [smul_eq_mul, add_assoc]
+  · rw [if_pos hhigh, if_pos hlow, if_neg h0]
+    simpa [hhigh, hlow, h0, Set.union_assoc, add_assoc] using
+      (measure_union hdisj_A_diff (hD.diff hA))
+  · rw [if_pos hhigh, if_neg hlow, if_pos h0]
+    simpa [hhigh, hlow, h0, Set.union_assoc, add_assoc] using
+      (measure_union hdisj_A_compl hD.compl)
+  · rw [if_pos hhigh, if_neg hlow, if_neg h0]
+    simp [hhigh, hlow, h0]
+  · rw [if_neg hhigh, if_pos hlow, if_pos h0]
+    simpa [hhigh, hlow, h0, Set.union_assoc, add_assoc] using
+      (measure_union hdisj_diff_compl hD.compl)
+  · rw [if_neg hhigh, if_pos hlow, if_neg h0]
+    simp [hhigh, hlow, h0]
+  · rw [if_neg hhigh, if_neg hlow, if_pos h0]
+    simp [hhigh, hlow, h0]
+  · rw [if_neg hhigh, if_neg hlow, if_neg h0]
+    simp [hhigh, hlow, h0]
 
 end Probability
 
