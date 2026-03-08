@@ -1346,6 +1346,38 @@ theorem infiniteLeft_indicatorAES_contradiction_of_submodular_cutoff
   exact infiniteLeft_indicatorAES_contradiction_of_midpoint_eventuallyUpper (P := P) hsplit g hc
     hgnonneg hmid hzero hupper hp1 hpoint
 
+/-- A paper-style large-`λ` assumption implies the pointwise ratio gap required by the
+cutoff contradiction theorem. -/
+theorem infiniteLeft_indicatorAES_contradiction_of_submodular_cutoff_of_lambda
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c : ℝ}
+    (hc : 0 < c) (hsub : Submodular (AES P g)) (hg0 : g 0 = 0)
+    (hmono : _root_.Monotone g) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    {q0 bar p1 : Level}
+    (hq0p1 : (q0 : ℝ) < (p1 : ℝ)) (hq0bar : (q0 : ℝ) < (bar : ℝ)) (hbar1 : (bar : ℝ) < 1)
+    (hq0pos : 0 < g q0) (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p)
+    (hp1 : (p1 : ℝ) < 1)
+    (hc_large : g p1 * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) < c) :
+    False := by
+  have hpoint :=
+    point_ratio_strict_of_lambda_bound (g := g) hq0p1 hp1 hc_large
+  exact infiniteLeft_indicatorAES_contradiction_of_submodular_cutoff (P := P) hsplit g hc hsub hg0
+    hmono hgnonneg hq0bar hbar1 hq0pos hlarge hp1 hpoint
+
+/-- Same contradiction, phrased with an existential tail witness instead of a named cutoff. -/
+theorem infiniteLeft_indicatorAES_contradiction_of_submodular_eventuallyLarge
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c : ℝ}
+    (hc : 0 < c) (hsub : Submodular (AES P g)) (hg0 : g 0 = 0)
+    (hmono : _root_.Monotone g) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    {q0 p1 : Level} (hq0p1 : (q0 : ℝ) < (p1 : ℝ))
+    (hq0pos : 0 < g q0) (hp1 : (p1 : ℝ) < 1)
+    (hc_large : g p1 * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) < c)
+    (htail : ∃ bar : Level, (q0 : ℝ) < (bar : ℝ) ∧ (bar : ℝ) < 1 ∧
+      ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p) :
+    False := by
+  rcases htail with ⟨bar, hq0bar, hbar1, hlarge⟩
+  exact infiniteLeft_indicatorAES_contradiction_of_submodular_cutoff_of_lambda (P := P) hsplit
+    g hc hsub hg0 hmono hgnonneg hq0p1 hq0bar hbar1 hq0pos hlarge hp1 hc_large
+
 /-- Infinite-left contradiction template with the origin value discharged automatically by
 `g(0) = 0`. -/
 theorem infiniteLeft_indicatorAES_contradiction
