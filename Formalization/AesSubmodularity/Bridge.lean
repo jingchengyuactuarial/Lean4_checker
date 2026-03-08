@@ -593,6 +593,42 @@ theorem indicatorAESProbabilityProfile_le_of_nonneg
   rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
   exact indicatorAESClosedForm_le_of_nonneg (g := g) hc hgnonneg
 
+/-- Under a finite penalty bound, the AES indicator probability profile takes values in the compact
+interval `[0, c]` on `(0,1]` provided `c` dominates that bound. This packages the local boundedness
+data needed for a later Bernstein-Doetsch style concavity upgrade. -/
+theorem indicatorAESProbabilityProfile_mem_Icc_of_bddAbove
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c M t : ℝ} (hc : 0 < c) (hcM : M < c)
+    (ht0 : 0 < t) (ht1 : t ≤ 1) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hg : ∀ p : Level, g p ≤ M) :
+    indicatorAESProbabilityProfile P hsplit g c t ∈ Set.Icc (0 : ℝ) c := by
+  constructor
+  · exact le_of_lt <|
+      indicatorAESProbabilityProfile_pos_of_bddAbove (P := P) hsplit g hc hcM ht0 ht1
+        hgnonneg hg
+  · exact indicatorAESProbabilityProfile_le_of_nonneg (P := P) hsplit g hc ht0 ht1 hgnonneg
+
+/-- The same compact-interval bound, expressed as a bounded-above statement on the positive-mass
+portion of the indicator probability profile. -/
+theorem indicatorAESProbabilityProfile_bddAbove_on_Ioc
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c : ℝ} (hc : 0 < c)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) :
+    BddAbove (indicatorAESProbabilityProfile P hsplit g c '' Set.Ioc (0 : ℝ) 1) := by
+  refine ⟨c, ?_⟩
+  rintro y ⟨t, ht, rfl⟩
+  exact indicatorAESProbabilityProfile_le_of_nonneg (P := P) hsplit g hc ht.1 ht.2 hgnonneg
+
+/-- If the penalties are uniformly bounded above by `M < c`, then the positive-mass portion of the
+indicator probability profile is also bounded below. -/
+theorem indicatorAESProbabilityProfile_bddBelow_on_Ioc_of_bddAbove
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c M : ℝ} (hc : 0 < c) (hcM : M < c)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) (hg : ∀ p : Level, g p ≤ M) :
+    BddBelow (indicatorAESProbabilityProfile P hsplit g c '' Set.Ioc (0 : ℝ) 1) := by
+  refine ⟨0, ?_⟩
+  rintro y ⟨t, ht, rfl⟩
+  exact le_of_lt <|
+    indicatorAESProbabilityProfile_pos_of_bddAbove (P := P) hsplit g hc hcM ht.1 ht.2
+      hgnonneg hg
+
 end EventProfiles
 
 end AesSubmodularity
