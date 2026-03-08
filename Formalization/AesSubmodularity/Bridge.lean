@@ -74,6 +74,30 @@ theorem not_tendsto_ratio_nhdsWithin_zero_of_antitoneOn_above {φ : ℝ → ℝ}
   have hmono := hanti htIoc ht1 (le_of_lt hlt_t)
   linarith
 
+/-- An antitone ratio profile on `(0,1]` cannot stay eventually below `L` near the origin while
+taking a strictly larger value at some positive point. This is a weaker, more direct variant of
+the limit-based contradiction used in the infinite-left AES argument. -/
+theorem not_eventually_le_ratio_nhdsWithin_zero_of_antitoneOn_above {φ : ℝ → ℝ} {L t1 : ℝ}
+    (hanti : AntitoneOn (fun t : ℝ => φ t / t) (Set.Ioc (0 : ℝ) 1))
+    (ht1 : t1 ∈ Set.Ioc (0 : ℝ) 1)
+    (hgt : L < φ t1 / t1)
+    (hupper : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), φ t / t ≤ L) :
+    False := by
+  have hpos : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), 0 < t := by
+    exact self_mem_nhdsWithin
+  have hltSet : Set.Iio t1 ∈ nhdsWithin (0 : ℝ) (Set.Ioi 0) := by
+    exact
+      (nhdsWithin_le_nhds : nhdsWithin (0 : ℝ) (Set.Ioi 0) ≤ nhds (0 : ℝ))
+        (Iio_mem_nhds ht1.1)
+  have hlt : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t < t1 := by
+    have hmem : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t ∈ Set.Iio t1 := hltSet
+    exact hmem.mono fun _ ht => ht
+  rcases Filter.Eventually.exists (hupper.and (hpos.and hlt)) with ⟨t, htL, ht0, htt1⟩
+  have htIoc : t ∈ Set.Ioc (0 : ℝ) 1 := by
+    exact ⟨ht0, le_trans (le_of_lt htt1) ht1.2⟩
+  have hmono := hanti htIoc ht1 (le_of_lt htt1)
+  linarith
+
 /-- A function that equals `0` at the origin but stays uniformly above a positive level on
 `(0,1]` cannot be continuous at `0`. This packages the contradiction pattern behind the
 finite-penalty AES argument. -/
@@ -914,6 +938,181 @@ theorem indicatorAESProbabilityProfile_ratio_ge_at_level
   rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
   exact indicatorAESClosedForm_ratio_ge_at_level (g := g) hc hgnonneg hp
 
+/-- Small-`t` upper bound for the indicator-level AES closed form.
+
+The interval `[0,1]` is split into three regions:
+levels below `q₀`, an intermediate band up to `\bar p`, and the far-right tail where the penalty
+already dominates the payoff level `c`. -/
+theorem indicatorAESClosedForm_le_linear_of_cutoff
+    (g : Level → ℝ) {c : ℝ} (hc : 0 < c) (hmono : _root_.Monotone g)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) {q0 bar : Level}
+    (hq0bar : (q0 : ℝ) < (bar : ℝ)) (hbar1 : (bar : ℝ) < 1)
+    (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p)
+    {t : ℝ} (ht0 : 0 < t) (htbar : t < 1 - (bar : ℝ))
+    (htgap :
+      t * (c / (1 - (bar : ℝ)) - c / (1 - (q0 : ℝ))) ≤ g q0) :
+    indicatorAESClosedForm g c t ≤ (c / (1 - (q0 : ℝ))) * t := by
+  have hq0_lt1 : (q0 : ℝ) < 1 := lt_trans hq0bar hbar1
+  have htarget_nonneg : 0 ≤ (c / (1 - (q0 : ℝ))) * t := by
+    have hden_pos : 0 < 1 - (q0 : ℝ) := sub_pos.mpr hq0_lt1
+    have hdiv_nonneg : 0 ≤ c / (1 - (q0 : ℝ)) := by
+      exact div_nonneg (le_of_lt hc) (le_of_lt hden_pos)
+    nlinarith [hdiv_nonneg, ht0]
+  unfold indicatorAESClosedForm
+  refine csSup_le ?_ ?_
+  · exact ⟨indicatorESClosedForm c t q0 - g q0, ⟨q0, rfl⟩⟩
+  · intro y hy
+    rcases hy with ⟨q, rfl⟩
+    by_cases hqbar : ((q : Level) : ℝ) ≤ (bar : ℝ)
+    · have hq_lt1 : (q : ℝ) < 1 := lt_of_le_of_lt hqbar hbar1
+      have htq : t < 1 - (q : ℝ) := by
+        have hden : 1 - (bar : ℝ) ≤ 1 - (q : ℝ) := by linarith
+        exact lt_of_lt_of_le htbar hden
+      have hmin :
+          min 1 (t / (1 - (q : ℝ))) = t / (1 - (q : ℝ)) := by
+        have hratio_lt_one : t / (1 - (q : ℝ)) < 1 := by
+          rw [div_lt_one (sub_pos.mpr hq_lt1)]
+          exact htq
+        exact min_eq_right (le_of_lt hratio_lt_one)
+      have hbranch :
+          indicatorESClosedForm c t q - g q = c * (t / (1 - (q : ℝ))) - g q := by
+        simp [indicatorESClosedForm, hq_lt1, hmin]
+      by_cases hqq0 : ((q : Level) : ℝ) ≤ (q0 : ℝ)
+      · have hfrac : c / (1 - (q : ℝ)) ≤ c / (1 - (q0 : ℝ)) := by
+          refine div_le_div_of_nonneg_left (le_of_lt hc) (sub_pos.mpr hq0_lt1) ?_
+          linarith
+        have hmul :
+            c * (t / (1 - (q : ℝ))) ≤ (c / (1 - (q0 : ℝ))) * t := by
+          have hmul' := mul_le_mul_of_nonneg_right hfrac (le_of_lt ht0)
+          have hrew : c * (t / (1 - (q : ℝ))) = (c / (1 - (q : ℝ))) * t := by ring
+          simpa [hrew] using hmul'
+        calc
+          indicatorESClosedForm c t q - g q = c * (t / (1 - (q : ℝ))) - g q := hbranch
+          _ ≤ c * (t / (1 - (q : ℝ))) := by linarith [hgnonneg q]
+          _ ≤ (c / (1 - (q0 : ℝ))) * t := hmul
+      · have hq0q : (q0 : ℝ) < (q : ℝ) := lt_of_not_ge hqq0
+        have hgq0q : g q0 ≤ g q := hmono (le_of_lt hq0q)
+        have hfracbar : c / (1 - (q : ℝ)) ≤ c / (1 - (bar : ℝ)) := by
+          refine div_le_div_of_nonneg_left (le_of_lt hc) (sub_pos.mpr hbar1) ?_
+          linarith
+        have hmulbar :
+            c * (t / (1 - (q : ℝ))) ≤ (c / (1 - (bar : ℝ))) * t := by
+          have hmul' := mul_le_mul_of_nonneg_right hfracbar (le_of_lt ht0)
+          have hrew : c * (t / (1 - (q : ℝ))) = (c / (1 - (q : ℝ))) * t := by ring
+          simpa [hrew] using hmul'
+        calc
+          indicatorESClosedForm c t q - g q = c * (t / (1 - (q : ℝ))) - g q := hbranch
+          _ ≤ c * (t / (1 - (q : ℝ))) - g q0 := by linarith
+          _ ≤ (c / (1 - (bar : ℝ))) * t - g q0 := by linarith
+          _ ≤ (c / (1 - (q0 : ℝ))) * t := by linarith
+    · have hqbar' : (bar : ℝ) < (q : ℝ) := lt_of_not_ge hqbar
+      have htail : c < g q := hlarge q hqbar'
+      by_cases hq_lt1 : (q : ℝ) < 1
+      · have hmin_le : min 1 (t / (1 - (q : ℝ))) ≤ 1 := min_le_left _ _
+        calc
+          indicatorESClosedForm c t q - g q = c * min 1 (t / (1 - (q : ℝ))) - g q := by
+            simp [indicatorESClosedForm, hq_lt1]
+          _ ≤ c - g q := by nlinarith [hmin_le, hc]
+          _ ≤ 0 := by linarith
+          _ ≤ (c / (1 - (q0 : ℝ))) * t := htarget_nonneg
+      · calc
+          indicatorESClosedForm c t q - g q = c - g q := by simp [indicatorESClosedForm, hq_lt1]
+          _ ≤ 0 := by linarith
+          _ ≤ (c / (1 - (q0 : ℝ))) * t := htarget_nonneg
+
+/-- Ratio upper bound corresponding to `indicatorAESClosedForm_le_linear_of_cutoff`. -/
+theorem indicatorAESClosedForm_ratio_le_of_cutoff
+    (g : Level → ℝ) {c : ℝ} (hc : 0 < c) (hmono : _root_.Monotone g)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) {q0 bar : Level}
+    (hq0bar : (q0 : ℝ) < (bar : ℝ)) (hbar1 : (bar : ℝ) < 1)
+    (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p)
+    {t : ℝ} (ht0 : 0 < t) (htbar : t < 1 - (bar : ℝ))
+    (htgap :
+      t * (c / (1 - (bar : ℝ)) - c / (1 - (q0 : ℝ))) ≤ g q0) :
+    indicatorAESClosedForm g c t / t ≤ c / (1 - (q0 : ℝ)) := by
+  exact (div_le_iff₀ ht0).2 <|
+    indicatorAESClosedForm_le_linear_of_cutoff (g := g) hc hmono hgnonneg hq0bar hbar1
+      hlarge ht0 htbar htgap
+
+/-- Eventual small-`t` upper bound for the indicator-level AES closed form. -/
+theorem indicatorAESClosedForm_ratio_eventually_le_of_cutoff
+    (g : Level → ℝ) {c : ℝ} (hc : 0 < c) (hmono : _root_.Monotone g)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) {q0 bar : Level}
+    (hq0bar : (q0 : ℝ) < (bar : ℝ)) (hbar1 : (bar : ℝ) < 1)
+    (hq0pos : 0 < g q0) (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p) :
+    ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+      indicatorAESClosedForm g c t / t ≤ c / (1 - (q0 : ℝ)) := by
+  let D : ℝ := c / (1 - (bar : ℝ)) - c / (1 - (q0 : ℝ))
+  have hDpos : 0 < D := by
+    have hfrac_lt : c / (1 - (q0 : ℝ)) < c / (1 - (bar : ℝ)) := by
+      refine div_lt_div_of_pos_left hc (sub_pos.mpr hbar1) ?_
+      linarith
+    dsimp [D]
+    linarith
+  let δ : ℝ := min (1 - (bar : ℝ)) (g q0 / D)
+  have hδpos : 0 < δ := by
+    refine lt_min ?_ ?_
+    · linarith
+    · exact div_pos hq0pos hDpos
+  have hsmall : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t < δ := by
+    have hset : Set.Iio δ ∈ nhdsWithin (0 : ℝ) (Set.Ioi 0) := by
+      exact
+        (nhdsWithin_le_nhds : nhdsWithin (0 : ℝ) (Set.Ioi 0) ≤ nhds (0 : ℝ))
+          (Iio_mem_nhds hδpos)
+    have hmem : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t ∈ Set.Iio δ := hset
+    exact hmem.mono fun _ ht => ht
+  have hpos : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), 0 < t := by
+    exact self_mem_nhdsWithin
+  filter_upwards [hsmall, hpos] with t htδ ht0
+  have htbar : t < 1 - (bar : ℝ) := lt_of_lt_of_le htδ (min_le_left _ _)
+  have htle : t ≤ g q0 / D := le_of_lt <| lt_of_lt_of_le htδ (min_le_right _ _)
+  have htgap : t * D ≤ g q0 := by
+    exact (le_div_iff₀ hDpos).mp htle
+  exact indicatorAESClosedForm_ratio_le_of_cutoff (g := g) hc hmono hgnonneg hq0bar hbar1
+    hlarge ht0 htbar htgap
+
+/-- Transport the eventual cutoff upper bound from the closed form to the chosen AES indicator
+probability profile. -/
+theorem indicatorAESProbabilityProfile_ratio_eventually_le_of_cutoff
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c : ℝ} (hc : 0 < c)
+    (hmono : _root_.Monotone g) (hgnonneg : ∀ p : Level, 0 ≤ g p) {q0 bar : Level}
+    (hq0bar : (q0 : ℝ) < (bar : ℝ)) (hbar1 : (bar : ℝ) < 1)
+    (hq0pos : 0 < g q0) (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p) :
+    ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+      indicatorAESProbabilityProfile P hsplit g c t / t ≤ c / (1 - (q0 : ℝ)) := by
+  let D : ℝ := c / (1 - (bar : ℝ)) - c / (1 - (q0 : ℝ))
+  let δ : ℝ := min (1 - (bar : ℝ)) (g q0 / D)
+  have hDpos : 0 < D := by
+    have hfrac_lt : c / (1 - (q0 : ℝ)) < c / (1 - (bar : ℝ)) := by
+      refine div_lt_div_of_pos_left hc (sub_pos.mpr hbar1) ?_
+      linarith
+    dsimp [D]
+    linarith
+  have hδpos : 0 < δ := by
+    refine lt_min ?_ ?_
+    · linarith
+    · exact div_pos hq0pos hDpos
+  have hsmall : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t < δ := by
+    have hset : Set.Iio δ ∈ nhdsWithin (0 : ℝ) (Set.Ioi 0) := by
+      exact
+        (nhdsWithin_le_nhds : nhdsWithin (0 : ℝ) (Set.Ioi 0) ≤ nhds (0 : ℝ))
+          (Iio_mem_nhds hδpos)
+    have hmem : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t ∈ Set.Iio δ := hset
+    exact hmem.mono fun _ ht => ht
+  have hpos : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), 0 < t := by
+    exact self_mem_nhdsWithin
+  filter_upwards [hsmall, hpos] with t htδ ht0
+  have htbar : t < 1 - (bar : ℝ) := lt_of_lt_of_le htδ (min_le_left _ _)
+  have ht1 : t ≤ 1 := by
+    have hbar_nonneg : 0 ≤ (bar : ℝ) := bar.2.1
+    linarith
+  rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
+  have htle : t ≤ g q0 / D := le_of_lt <| lt_of_lt_of_le htδ (min_le_right _ _)
+  have htgap : t * D ≤ g q0 := by
+    exact (le_div_iff₀ hDpos).mp htle
+  exact indicatorAESClosedForm_ratio_le_of_cutoff (g := g) hc hmono hgnonneg hq0bar hbar1
+    hlarge ht0 htbar htgap
+
 /-- Lean-valid contradiction template for the infinite-left AES argument: once one has
 origin-slope control and concavity of the indicator profile, any strictly larger ratio at a
 positive point is impossible. -/
@@ -944,6 +1143,39 @@ theorem infiniteLeft_indicatorAES_contradiction_of_concave_originSlope
       indicatorAESProbabilityProfile_ratio_ge_at_level (P := P) hsplit g hc hgnonneg hp1
     exact lt_of_lt_of_le hpoint hlower
   exact not_tendsto_ratio_nhdsWithin_zero_of_antitoneOn_above hanti ht1 hratio hlim
+
+/-- A cutoff-based contradiction template for the infinite-left AES argument.
+
+This avoids building the full origin-slope limit: it is enough to have an eventual upper bound
+near the origin together with antitonicity of the ratio coming from concavity. -/
+theorem infiniteLeft_indicatorAES_contradiction_of_concave_eventuallyUpper
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c q0 : ℝ}
+    (hc : 0 < c) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hconc :
+      ConcaveOn ℝ (Set.Icc (0 : ℝ) 1) (indicatorAESProbabilityProfile P hsplit g c))
+    (hzero : indicatorAESProbabilityProfile P hsplit g c 0 = 0)
+    (hupper :
+      ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+        indicatorAESProbabilityProfile P hsplit g c t / t ≤ c / (1 - q0))
+    {p1 : Level} (hp1 : (p1 : ℝ) < 1)
+    (hpoint : c / (1 - q0) < (c - g p1) / (1 - (p1 : ℝ))) :
+    False := by
+  have hanti :
+      AntitoneOn (fun t : ℝ => indicatorAESProbabilityProfile P hsplit g c t / t)
+        (Set.Ioc (0 : ℝ) 1) :=
+    ratio_antitoneOn_of_concaveOn_zero hconc hzero
+  have ht1 : 1 - (p1 : ℝ) ∈ Set.Ioc (0 : ℝ) 1 := by
+    constructor
+    · linarith
+    · have hp1_nonneg : 0 ≤ (p1 : ℝ) := p1.2.1
+      linarith
+  have hratio :
+      c / (1 - q0) <
+        indicatorAESProbabilityProfile P hsplit g c (1 - (p1 : ℝ)) / (1 - (p1 : ℝ)) := by
+    have hlower :=
+      indicatorAESProbabilityProfile_ratio_ge_at_level (P := P) hsplit g hc hgnonneg hp1
+    exact lt_of_lt_of_le hpoint hlower
+  exact not_eventually_le_ratio_nhdsWithin_zero_of_antitoneOn_above hanti ht1 hratio hupper
 
 /-- Infinite-left contradiction template with the origin value discharged automatically by
 `g(0) = 0`. -/
