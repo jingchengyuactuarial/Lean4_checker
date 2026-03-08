@@ -1,5 +1,6 @@
 import Formalization.RiskMeasure.Axioms
 import Formalization.RiskMeasure.RandomVariable
+import Formalization.RiskMeasure.Linf
 import Formalization.RiskMeasure.Common
 import Formalization.RiskMeasure.LawInvariant
 import Formalization.RiskMeasure.Indicators

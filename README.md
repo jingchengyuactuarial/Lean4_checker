@@ -32,6 +32,10 @@ The current risk-measure layer defines:
 The current random-variable API works on the subtype of almost-everywhere measurable real-valued
 functions under a fixed probability measure `P`.
 
+Alongside that subtype-based API, the repository now has a thin `L∞` bridge layer in
+`Formalization/RiskMeasure/Linf.lean`, built directly on top of `MeasureTheory.Lp ℝ ∞ μ`,
+`indicatorConstLp`, and `mathlib`'s `NoAtoms`.
+
 For the AES proof specifically, the repository now also isolates:
 
 - law invariance as a standalone property;
@@ -66,6 +70,7 @@ lake build
 
 - `Formalization/RiskMeasure/Axioms.lean`
 - `Formalization/RiskMeasure/RandomVariable.lean`
+- `Formalization/RiskMeasure/Linf.lean`
 - `Formalization/RiskMeasure/CertaintyEquivalent.lean`
 - `Formalization/RiskMeasure/Quantile.lean`
 - `Formalization/RiskMeasure/Shortfall.lean`

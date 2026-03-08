@@ -1,5 +1,7 @@
 import Formalization.RiskMeasure.Quantile
 import Formalization.RiskMeasure.LawInvariant
+import Formalization.RiskMeasure.Linf
+import Formalization.RiskMeasure.Indicators
 import Mathlib.MeasureTheory.Function.EssSup
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
 
@@ -77,9 +79,17 @@ variable (P : Measure Ω) [IsProbabilityMeasure P]
 def ES (p : Level) (X : RandomVariable P) : ℝ :=
   distES (law P X) p
 
+/-- Expected shortfall on the `L^\infty` model, transported through `RandomVariable.ofLinf`. -/
+def ESLinf (p : Level) (X : Linf P) : ℝ :=
+  ES P p (RandomVariable.ofLinf (μ := P) X)
+
 /-- The expected-shortfall profile of a random variable. -/
 def ESProfile (X : RandomVariable P) : Level → ℝ :=
   fun p => ES P p X
+
+/-- The expected-shortfall profile of an `L^\infty` position. -/
+def ESLinfProfile (X : Linf P) : Level → ℝ :=
+  fun p => ESLinf P p X
 
 /-- Monotonicity of the expected-shortfall profile on the open unit interval. -/
 def ESProfileMonotoneOnIoo (X : RandomVariable P) : Prop :=
@@ -93,6 +103,40 @@ def ESProfileContinuous (X : RandomVariable P) : Prop :=
 
 /-- Long-form alias for `ES`. -/
 abbrev ExpectedShortfall := ES P
+
+/-- Long-form alias for `ESLinf`. -/
+abbrev LinfExpectedShortfall := ESLinf P
+
+/-- `ES` on `L^\infty` agrees with `ES` on any a.e.-equal packaged random variable. -/
+theorem ESLinf_eq_ES_of_ae_eq (p : Level) (X : Linf P) (Y : RandomVariable P)
+    (hXY : (X : Ω → ℝ) =ᵐ[P] Y) :
+    ESLinf P p X = ES P p Y := by
+  unfold ESLinf ES law RandomVariable.ofLinf
+  congr 1
+  exact Measure.map_congr hXY
+
+/-- The indicator positions already used in the AES reduction induce the same `ES` values in the
+subtype-based and `L^\infty` models. -/
+theorem ESLinf_linfIndicator_eq_scaledIndicatorRV (p : Level) (c : ℝ) {A : Set Ω}
+    (hA : MeasurableSet A) :
+    ESLinf P p (linfIndicator P A hA c) = ES P p (scaledIndicatorRV P c A hA) :=
+  ESLinf_eq_ES_of_ae_eq (P := P) p (linfIndicator P A hA c) (scaledIndicatorRV P c A hA)
+    (ofLinf_linfIndicator_ae_eq_scaledIndicatorRV (P := P) c hA)
+
+/-- The `ES` test profile for `L^\infty` indicator positions. -/
+def linfIndicatorESTestProfile (c : ℝ) (A : Set Ω) (hA : MeasurableSet A) : Level → ℝ :=
+  fun p => ESLinf P p (linfIndicator P A hA c)
+
+/-- The existing subtype-based indicator test profile. -/
+def indicatorESTestProfile (c : ℝ) (A : Set Ω) (hA : MeasurableSet A) : Level → ℝ :=
+  fun p => ES P p (scaledIndicatorRV P c A hA)
+
+/-- The `L^\infty` and subtype-based indicator `ES` test profiles coincide. -/
+theorem linfIndicatorESTestProfile_eq_indicatorESTestProfile (c : ℝ) {A : Set Ω}
+    (hA : MeasurableSet A) :
+    linfIndicatorESTestProfile P c A hA = indicatorESTestProfile P c A hA := by
+  funext p
+  exact ESLinf_linfIndicator_eq_scaledIndicatorRV (P := P) p c hA
 
 /-- `ES` factors through the law of the underlying random variable. -/
 theorem ES_factorsThroughLaw (p : Level) : FactorsThroughLaw P (ES P p) := by
