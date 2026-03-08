@@ -58,10 +58,16 @@ theorem ofLaw_lawInvariant (f : ProbabilityLaw → C) :
     LawInvariant P (ofLaw P f) :=
   (ofLaw_factorsThroughLaw (P := P) f).lawInvariant (P := P)
 
+section
+
+omit [IsProbabilityMeasure P]
+
 /-- A law-invariant functional takes the same value on identically distributed random variables. -/
 theorem LawInvariant.of_identDistrib {ρ : RandomVariable P → C} (hρ : LawInvariant P ρ)
     {X Y : RandomVariable P} (hXY : IdentDistrib (X : Ω → ℝ) (Y : Ω → ℝ) P P) : ρ X = ρ Y :=
   hρ hXY.map_eq
+
+end
 
 /-- Any law-induced functional takes the same value on identically distributed random variables. -/
 theorem FactorsThroughLaw.of_identDistrib {ρ : RandomVariable P → C}

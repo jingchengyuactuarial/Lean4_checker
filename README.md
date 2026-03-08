@@ -59,6 +59,18 @@ The main place where `mathlib` currently does not reach the exact AES proof is a
 `MeasureTheory.NoAtoms` is available, but it only gives singleton-nullness, not the stronger event
 splitting property `∀ t ≤ P(A), ∃ B ⊆ A, P(B) = t` used in the paper proof.
 
+## Proof-facing bridge files
+
+For proof projects such as AES, the repository now separates reusable risk-measure theory from
+proof-facing bridge lemmas:
+
+- `Formalization/RiskMeasure/...` keeps definitions and pointwise reusable lemmas;
+- `Formalization/<ProofName>/Bridge.lean` stores narrow wrappers, profile-level identities, and
+  reduction lemmas that are mostly useful inside one proof.
+
+This pattern is meant to be reusable for later proof formalizations as well, so that the core API
+does not slowly turn into a collection of one-off theorem wrappers.
+
 ## Quick start
 
 ```bash
@@ -81,6 +93,7 @@ lake build
 - `Formalization/RiskMeasure/SetFunctions.lean`
 - `Formalization/RiskMeasure/Atomless.lean`
 - `Formalization/RiskMeasure/Common.lean` as a convenience re-export
+- `Formalization/AesSubmodularity/Bridge.lean` for proof-facing bridge lemmas
 - `Formalization/AesSubmodularity.lean`
 
 ## References

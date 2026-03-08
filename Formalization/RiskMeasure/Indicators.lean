@@ -37,6 +37,10 @@ def indicatorRV (P : Measure Ω) (A : Set Ω) (hA : MeasurableSet A) : RandomVar
 def scaledIndicator (c : ℝ) (A : Set Ω) : Ω → ℝ :=
   fun ω => c * eventIndicator A ω
 
+section
+
+omit [MeasurableSpace Ω]
+
 /-- The scaled indicator is the usual constant-valued indicator function. -/
 @[simp] lemma scaledIndicator_eq_indicator_const (c : ℝ) (A : Set Ω) :
     scaledIndicator c A = A.indicator (fun _ => c) := by
@@ -44,6 +48,8 @@ def scaledIndicator (c : ℝ) (A : Set Ω) : Ω → ℝ :=
   by_cases hω : ω ∈ A
   · simp [scaledIndicator, eventIndicator, hω]
   · simp [scaledIndicator, eventIndicator, hω]
+
+end
 
 /-- Scaled indicators packaged as random variables. -/
 def scaledIndicatorRV (P : Measure Ω) (c : ℝ) (A : Set Ω) (hA : MeasurableSet A) :
@@ -55,6 +61,11 @@ def scaledIndicatorRV (P : Measure Ω) (c : ℝ) (A : Set Ω) (hA : MeasurableSe
 section Probability
 
 variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+/-- The law of a scaled indicator is the obvious two-point probability measure supported on
+`{0, c}`. -/
+def scaledIndicatorLaw (c : ℝ) (A : Set Ω) : Measure ℝ :=
+  P A • Measure.dirac c + P Aᶜ • Measure.dirac 0
 
 /-- If two measurable events have the same probability, then the corresponding scaled indicators
 have the same distribution. -/
@@ -92,6 +103,32 @@ theorem identDistrib_scaledIndicator_of_measure_eq (c : ℝ) {A B : Set Ω}
     IdentDistrib (scaledIndicator c A) (scaledIndicator c B) P P := by
   refine ⟨(scaledIndicatorRV P c A hA).2, (scaledIndicatorRV P c B hB).2, ?_⟩
   simpa [law, scaledIndicatorRV] using law_scaledIndicatorRV_eq_of_measure_eq (P := P) c hA hB hAB
+
+/-- Explicit two-point law of a scaled indicator position. -/
+theorem law_scaledIndicatorRV_eq_scaledIndicatorLaw (c : ℝ) {A : Set Ω} (hA : MeasurableSet A) :
+    law P (scaledIndicatorRV P c A hA) = scaledIndicatorLaw P c A := by
+  classical
+  ext s hs
+  rw [law, Measure.map_apply_of_aemeasurable (scaledIndicatorRV P c A hA).2 hs,
+    scaledIndicatorLaw, Measure.add_apply, Measure.smul_apply, Measure.smul_apply,
+    Measure.dirac_apply' _ hs, Measure.dirac_apply' _ hs]
+  change P ((scaledIndicator c A) ⁻¹' s) = P A • s.indicator 1 c + P Aᶜ • s.indicator 1 0
+  by_cases hc : c ∈ s
+  · by_cases h0 : (0 : ℝ) ∈ s
+    · rw [scaledIndicator_eq_indicator_const, Set.indicator_const_preimage_eq_union]
+      have hA_le_univ : P A ≤ P Set.univ := measure_mono (by intro x hx; simp)
+      rw [if_pos hc, if_pos h0, Set.union_compl_self, measure_univ, measure_compl hA (by simp)]
+      simpa [hc, h0, Set.indicator_of_mem, add_comm] using (tsub_add_cancel_of_le hA_le_univ).symm
+    · rw [scaledIndicator_eq_indicator_const, Set.indicator_const_preimage_eq_union]
+      rw [if_pos hc, if_neg h0, Set.union_empty]
+      simp [hc, h0, Set.indicator_of_mem, Set.indicator_of_notMem]
+  · by_cases h0 : (0 : ℝ) ∈ s
+    · rw [scaledIndicator_eq_indicator_const, Set.indicator_const_preimage_eq_union]
+      rw [if_neg hc, if_pos h0, Set.empty_union]
+      simp [hc, h0, Set.indicator_of_mem, Set.indicator_of_notMem]
+    · rw [scaledIndicator_eq_indicator_const, Set.indicator_const_preimage_eq_union]
+      rw [if_neg hc, if_neg h0, Set.empty_union]
+      simp [hc, h0, Set.indicator_of_notMem]
 
 end Probability
 

@@ -1,0 +1,352 @@
+import Formalization.RiskMeasure
+
+/-!
+# AES Bridge Lemmas
+
+This file stores proof-facing bridge lemmas for the AES project.
+They are intentionally narrower than the reusable risk-measure API:
+
+- event-probability reductions derived from law invariance;
+- profile wrappers for `ES` on indicator positions;
+- convenience lemmas that connect the reusable `RiskMeasure` layer to the
+  specific reduction pattern used in the AES proof.
+-/
+
+noncomputable section
+
+open MeasureTheory
+open RiskMeasure
+
+namespace AesSubmodularity
+
+section LawReduction
+
+variable {Ω C : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+/-- By law invariance, a risk functional evaluated on `c 1_A` depends only on the probability of
+`A`. -/
+theorem lawInvariant_scaledIndicator_eq_of_measure_eq
+    {ρ : RandomVariable P → C} (hρ : LawInvariant P ρ) (c : ℝ)
+    {A B : Set Ω} (hA : MeasurableSet A) (hB : MeasurableSet B) (hAB : P A = P B) :
+    ρ (scaledIndicatorRV P c A hA) = ρ (scaledIndicatorRV P c B hB) := by
+  exact hρ.of_identDistrib (P := P)
+    (identDistrib_scaledIndicator_of_measure_eq (P := P) c hA hB hAB)
+
+end LawReduction
+
+section ESProfiles
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+/-- Target closed form for the paper formula
+`ES_p(c 1_A) = c * min (1, t / (1 - p))` on `p < 1`, with the endpoint value `c` at `p = 1`.
+
+This is stored here as a proof-facing object before the full characterization theorem is proved. -/
+def indicatorESClosedForm (c t : ℝ) (p : Level) : ℝ :=
+  if (p : ℝ) < 1 then
+    c * min 1 (t / (1 - (p : ℝ)))
+  else
+    c
+
+omit [IsProbabilityMeasure P] in
+private theorem scaledIndicatorLaw_apply_Iic (c : ℝ) {A : Set Ω} (x : ℝ) :
+    scaledIndicatorLaw P c A (Set.Iic x) =
+      (if c ≤ x then P A else 0) + (if 0 ≤ x then P Aᶜ else 0) := by
+  rw [scaledIndicatorLaw, Measure.add_apply, Measure.smul_apply, Measure.smul_apply,
+    Measure.dirac_apply' _ measurableSet_Iic, Measure.dirac_apply' _ measurableSet_Iic]
+  by_cases hc : c ≤ x <;> by_cases h0 : 0 ≤ x <;> simp [Set.mem_Iic, hc, h0]
+
+omit [IsProbabilityMeasure P] in
+private theorem scaledIndicatorLaw_apply (c : ℝ) {A : Set Ω} {s : Set ℝ} (hs : MeasurableSet s) :
+    scaledIndicatorLaw P c A s =
+      s.indicator (fun _ => P A) c + s.indicator (fun _ => P Aᶜ) 0 := by
+  rw [scaledIndicatorLaw, Measure.add_apply, Measure.smul_apply, Measure.smul_apply,
+    Measure.dirac_apply' _ hs, Measure.dirac_apply' _ hs]
+  by_cases hc : c ∈ s <;> by_cases h0 : (0 : ℝ) ∈ s <;> simp [hc, h0]
+
+private theorem cdf_scaledIndicatorLaw_of_lt_zero (c : ℝ) (hc : 0 ≤ c) {A : Set Ω}
+    (hA : MeasurableSet A) {x : ℝ} (hx : x < 0) :
+    ProbabilityTheory.cdf (scaledIndicatorLaw P c A) x = 0 := by
+  haveI : IsProbabilityMeasure (scaledIndicatorLaw P c A) := by
+    rw [← law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA]
+    infer_instance
+  rw [ProbabilityTheory.cdf_eq_real, measureReal_def, scaledIndicatorLaw_apply_Iic (P := P) c x]
+  have hcx : ¬ c ≤ x := not_le.mpr (lt_of_lt_of_le hx hc)
+  have h0x : ¬ 0 ≤ x := not_le.mpr hx
+  simp [hcx, h0x]
+
+private theorem cdf_scaledIndicatorLaw_of_nonneg_lt (c : ℝ) {A : Set Ω}
+    (hA : MeasurableSet A) {x : ℝ} (hx0 : 0 ≤ x) (hxc : x < c) :
+    ProbabilityTheory.cdf (scaledIndicatorLaw P c A) x = P.real Aᶜ := by
+  haveI : IsProbabilityMeasure (scaledIndicatorLaw P c A) := by
+    rw [← law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA]
+    infer_instance
+  rw [ProbabilityTheory.cdf_eq_real, measureReal_def, scaledIndicatorLaw_apply_Iic (P := P) c x]
+  have hcx : ¬ c ≤ x := not_le.mpr hxc
+  simp [Measure.real, hcx, hx0]
+
+private theorem cdf_scaledIndicatorLaw_of_le (c : ℝ) (hc : 0 ≤ c) {A : Set Ω}
+    (hA : MeasurableSet A) {x : ℝ} (hcx : c ≤ x) :
+    ProbabilityTheory.cdf (scaledIndicatorLaw P c A) x = 1 := by
+  haveI : IsProbabilityMeasure (scaledIndicatorLaw P c A) := by
+    rw [← law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA]
+    infer_instance
+  rw [ProbabilityTheory.cdf_eq_real, measureReal_def, scaledIndicatorLaw_apply_Iic (P := P) c x]
+  have h0x : 0 ≤ x := hc.trans hcx
+  simp [hcx, h0x, prob_add_prob_compl (μ := P) hA]
+
+private theorem distLowerQuantile_scaledIndicator_eq_indicator (c : ℝ) (hc : 0 < c)
+    {A : Set Ω} (hA : MeasurableSet A) (hA_pos : P A ≠ 0) {q : ℝ}
+    (hq : q ∈ Set.Ioc (0 : ℝ) 1) :
+    distLowerQuantile (law P (scaledIndicatorRV P c A hA)) q =
+      (Set.Ioc (1 - P.real A) 1).indicator (fun _ => c) q := by
+  haveI : IsProbabilityMeasure (scaledIndicatorLaw P c A) := by
+    rw [← law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA]
+    infer_instance
+  have hscaled :
+      distLowerQuantile (scaledIndicatorLaw P c A) q =
+        (Set.Ioc (1 - P.real A) 1).indicator (fun _ => c) q := by
+    have hc_nonneg : 0 ≤ c := le_of_lt hc
+    have hA_real_ne : P.real A ≠ 0 := by
+      intro h_real
+      apply hA_pos
+      exact (measureReal_eq_zero_iff (μ := P)).mp h_real
+    have hA_real_pos : 0 < P.real A := lt_of_le_of_ne (by positivity) hA_real_ne.symm
+    have hA_compl_real : P.real Aᶜ = 1 - P.real A := by
+      linarith [probReal_add_probReal_compl (μ := P) hA]
+    by_cases hqA : q ≤ 1 - P.real A
+    · have hq_not_mem : q ∉ Set.Ioc (1 - P.real A) 1 := by
+        simp [Set.mem_Ioc, hqA]
+      rw [Set.indicator_of_notMem hq_not_mem]
+      apply le_antisymm
+      · apply csInf_le
+        · exact upperLevelSet_bddBelow (scaledIndicatorLaw P c A) hq.1
+        · have hcdf0 :
+              ProbabilityTheory.cdf (scaledIndicatorLaw P c A) 0 = P.real Aᶜ :=
+            cdf_scaledIndicatorLaw_of_nonneg_lt (P := P) c hA (show (0 : ℝ) ≤ 0 by simp) hc
+          simpa [hcdf0, hA_compl_real] using hqA
+      · apply le_csInf
+        · refine ⟨0, ?_⟩
+          have hcdf0 :
+              ProbabilityTheory.cdf (scaledIndicatorLaw P c A) 0 = P.real Aᶜ :=
+            cdf_scaledIndicatorLaw_of_nonneg_lt (P := P) c hA (show (0 : ℝ) ≤ 0 by simp) hc
+          simpa [hcdf0, hA_compl_real] using hqA
+        · intro x hx
+          by_contra hx_nonneg
+          have hxlt : x < 0 := lt_of_not_ge hx_nonneg
+          have hcdfx :
+              ProbabilityTheory.cdf (scaledIndicatorLaw P c A) x = 0 :=
+            cdf_scaledIndicatorLaw_of_lt_zero (P := P) c hc_nonneg hA hxlt
+          have : q ≤ 0 := by simpa [hcdfx] using hx
+          exact (not_le_of_gt hq.1) this
+    · have hqA' : 1 - P.real A < q := lt_of_not_ge hqA
+      have hq_mem : q ∈ Set.Ioc (1 - P.real A) 1 := ⟨hqA', hq.2⟩
+      rw [Set.indicator_of_mem hq_mem]
+      apply le_antisymm
+      · apply csInf_le
+        · exact upperLevelSet_bddBelow (scaledIndicatorLaw P c A) hq.1
+        · have hcdfc :
+              ProbabilityTheory.cdf (scaledIndicatorLaw P c A) c = 1 :=
+            cdf_scaledIndicatorLaw_of_le (P := P) c hc_nonneg hA le_rfl
+          have : q ≤ 1 := hq.2
+          simpa [hcdfc] using this
+      · apply le_csInf
+        · refine ⟨c, ?_⟩
+          have hcdfc :
+              ProbabilityTheory.cdf (scaledIndicatorLaw P c A) c = 1 :=
+            cdf_scaledIndicatorLaw_of_le (P := P) c hc_nonneg hA le_rfl
+          have : q ≤ 1 := hq.2
+          simpa [hcdfc] using this
+        · intro x hx
+          by_contra hcx
+          have hxlt_or : x < 0 ∨ 0 ≤ x ∧ x < c := by
+            by_cases hx0 : x < 0
+            · exact Or.inl hx0
+            · exact Or.inr ⟨le_of_not_gt hx0, lt_of_not_ge hcx⟩
+          cases hxlt_or with
+          | inl hxlt =>
+              have hcdfx :
+                  ProbabilityTheory.cdf (scaledIndicatorLaw P c A) x = 0 :=
+                cdf_scaledIndicatorLaw_of_lt_zero (P := P) c hc_nonneg hA hxlt
+              have : q ≤ 0 := by simpa [hcdfx] using hx
+              exact (not_le_of_gt hq.1) this
+          | inr hxmid =>
+              have hcdfx :
+                  ProbabilityTheory.cdf (scaledIndicatorLaw P c A) x = P.real Aᶜ :=
+                cdf_scaledIndicatorLaw_of_nonneg_lt (P := P) c hA hxmid.1 hxmid.2
+              have : q ≤ P.real Aᶜ := by simpa [hcdfx] using hx
+              linarith [hA_compl_real, hqA']
+  simpa [law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA] using hscaled
+
+private theorem distESIntegral_scaledIndicator_eq (p : Level) (c : ℝ) (hc : 0 < c)
+    {A : Set Ω} (hA : MeasurableSet A) (hA_pos : P A ≠ 0) :
+    distESIntegral (law P (scaledIndicatorRV P c A hA)) p = c * min (1 - (p : ℝ)) (P.real A) := by
+  haveI : IsProbabilityMeasure (scaledIndicatorLaw P c A) := by
+    rw [← law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA]
+    infer_instance
+  have hscaled :
+      distESIntegral (scaledIndicatorLaw P c A) p = c * min (1 - (p : ℝ)) (P.real A) := by
+    have hp_le : (p : ℝ) ≤ 1 := p.2.2
+    have hp_nonneg : 0 ≤ (p : ℝ) := p.2.1
+    have hA_real_pos : 0 < P.real A := by
+      have hA_real_ne : P.real A ≠ 0 := by
+        intro h_real
+        apply hA_pos
+        exact (measureReal_eq_zero_iff (μ := P)).mp h_real
+      exact lt_of_le_of_ne (by positivity) hA_real_ne.symm
+    have h_step :
+        Set.EqOn (distLowerQuantile (scaledIndicatorLaw P c A))
+          ((Set.Ioc (1 - P.real A) 1).indicator (fun _ => c)) (Set.Ioc (p : ℝ) 1) := by
+      intro q hq
+      have hq' : q ∈ Set.Ioc (0 : ℝ) 1 := ⟨lt_of_le_of_lt hp_nonneg hq.1, hq.2⟩
+      simpa [law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA] using
+        (distLowerQuantile_scaledIndicator_eq_indicator (P := P) c hc hA hA_pos hq')
+    rw [distESIntegral, intervalIntegral.integral_of_le hp_le]
+    rw [setIntegral_congr_fun measurableSet_Ioc h_step]
+    by_cases hpA : 1 - P.real A ≤ (p : ℝ)
+    · have hconst :
+          Set.EqOn ((Set.Ioc (1 - P.real A) 1).indicator (fun _ => c)) (fun _ => c)
+            (Set.Ioc (p : ℝ) 1) := by
+          intro q hq
+          have hq_mem : q ∈ Set.Ioc (1 - P.real A) 1 := ⟨lt_of_le_of_lt hpA hq.1, hq.2⟩
+          simp [Set.indicator_of_mem hq_mem]
+      rw [setIntegral_congr_fun measurableSet_Ioc hconst, setIntegral_const]
+      have hvol : volume.real (Set.Ioc (p : ℝ) 1) = 1 - (p : ℝ) :=
+        Real.volume_real_Ioc_of_le hp_le
+      have hmin' : 1 - (p : ℝ) ≤ P.real A := by linarith
+      rw [min_eq_left hmin']
+      simp [hvol, smul_eq_mul, mul_comm]
+    · have hpA' : (p : ℝ) < 1 - P.real A := lt_of_not_ge hpA
+      rw [integral_indicator_const _ measurableSet_Ioc]
+      rw [measureReal_restrict_apply measurableSet_Ioc]
+      have h_inter :
+          Set.Ioc (1 - P.real A) 1 ∩ Set.Ioc (p : ℝ) 1 = Set.Ioc (1 - P.real A) 1 := by
+        ext q
+        constructor
+        · intro hq
+          exact hq.1
+        · intro hq
+          exact ⟨hq, ⟨lt_trans hpA' hq.1, hq.2⟩⟩
+      have hvol : volume.real (Set.Ioc (1 - P.real A) 1) = P.real A := by
+        rw [Real.volume_real_Ioc_of_le]
+        · ring
+        · linarith
+      have hmin' : P.real A < 1 - (p : ℝ) := by linarith
+      rw [min_eq_right (le_of_lt hmin')]
+      simp [h_inter, hvol, smul_eq_mul, mul_comm]
+  simpa [law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA] using hscaled
+
+/-- Closed form of `ES` on an indicator position `c 1_A` with positive payoff and non-null event. -/
+theorem ES_scaledIndicatorRV_eq_indicatorESClosedForm (p : Level) (c : ℝ) (hc : 0 < c)
+    {A : Set Ω} (hA : MeasurableSet A) (hA_pos : P A ≠ 0) :
+    ES P p (scaledIndicatorRV P c A hA) = indicatorESClosedForm c (P.real A) p := by
+  by_cases hp : (p : ℝ) < 1
+  · have hmain :
+        (1 - (p : ℝ))⁻¹ * distESIntegral (law P (scaledIndicatorRV P c A hA)) p =
+          c * min 1 (P.real A / (1 - (p : ℝ))) := by
+      rw [distESIntegral_scaledIndicator_eq (P := P) p c hc hA hA_pos]
+      have hp_pos : 0 < 1 - (p : ℝ) := sub_pos.mpr hp
+      have hp_ne : 1 - (p : ℝ) ≠ 0 := ne_of_gt hp_pos
+      by_cases hmin : 1 - (p : ℝ) ≤ P.real A
+      · rw [min_eq_left hmin, min_eq_left]
+        · field_simp [hp_ne]
+        · rw [one_le_div₀ hp_pos]
+          linarith
+      · have hlt : P.real A < 1 - (p : ℝ) := lt_of_not_ge hmin
+        rw [min_eq_right (le_of_lt hlt), min_eq_right]
+        · field_simp [hp_ne]
+        · rw [div_le_one hp_pos]
+          linarith
+    simpa [ES, distES, indicatorESClosedForm, hp] using hmain
+  · have hmain :
+        distUpperQuantile (law P (scaledIndicatorRV P c A hA)) = c := by
+      haveI : IsProbabilityMeasure (scaledIndicatorLaw P c A) := by
+        rw [← law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA]
+        infer_instance
+      have hscaled : distUpperQuantile (scaledIndicatorLaw P c A) = c := by
+        unfold distUpperQuantile
+        rw [essSup_eq_sInf]
+        let S : Set ℝ := {a : ℝ | scaledIndicatorLaw P c A {x : ℝ | a < x} = 0}
+        have hc_mem : c ∈ S := by
+          dsimp [S]
+          rw [scaledIndicatorLaw_apply (P := P) (c := c) (A := A)
+            (s := {x : ℝ | c < x}) measurableSet_Ioi]
+          have hcc : c ∉ {x : ℝ | c < x} := by simp
+          have h0c : (0 : ℝ) ∉ {x : ℝ | c < x} := by
+            simp [not_lt.mpr (le_of_lt hc)]
+          simp [hcc, h0c]
+        have hsingleton : scaledIndicatorLaw P c A ({c} : Set ℝ) = P A := by
+          rw [scaledIndicatorLaw_apply (P := P) (c := c) (A := A)
+            (s := ({c} : Set ℝ)) (measurableSet_singleton c)]
+          have hcc : c ∈ ({c} : Set ℝ) := by simp
+          have h0c : (0 : ℝ) ∉ ({c} : Set ℝ) := by
+            simpa using (ne_of_gt hc).symm
+          simp [hcc, h0c]
+        have h_lower : c ∈ lowerBounds S := by
+          intro b hb
+          by_contra hbc
+          have hbc' : b < c := lt_of_not_ge hbc
+          have hsubset : ({c} : Set ℝ) ⊆ {x : ℝ | b < x} := by
+            intro x hx
+            simp only [Set.mem_singleton_iff] at hx
+            simp [hx, hbc']
+          have hmono : scaledIndicatorLaw P c A ({c} : Set ℝ) ≤
+              scaledIndicatorLaw P c A {x : ℝ | b < x} := measure_mono hsubset
+          have : P A = 0 := by
+            rw [hsingleton, hb] at hmono
+            exact le_antisymm hmono bot_le
+          exact hA_pos this
+        refine le_antisymm ?_ ?_
+        · exact csInf_le ⟨c, h_lower⟩ hc_mem
+        · exact le_csInf ⟨c, hc_mem⟩ h_lower
+      simpa [law_scaledIndicatorRV_eq_scaledIndicatorLaw (P := P) (c := c) hA] using hscaled
+    simpa [ES, distES, indicatorESClosedForm, hp] using hmain
+
+/-- Closed form of `ES` on the `L^\infty` indicator model. -/
+theorem ESLinf_linfIndicator_eq_indicatorESClosedForm (p : Level) (c : ℝ) (hc : 0 < c)
+    {A : Set Ω} (hA : MeasurableSet A) (hA_pos : P A ≠ 0) :
+    ESLinf P p (linfIndicator P A hA c) = indicatorESClosedForm c (P.real A) p := by
+  rw [ESLinf_linfIndicator_eq_scaledIndicatorRV (P := P) p c hA]
+  exact ES_scaledIndicatorRV_eq_indicatorESClosedForm (P := P) p c hc hA hA_pos
+
+/-- The `ES` test profile for `L^\infty` indicator positions. -/
+def linfIndicatorESTestProfile (c : ℝ) (A : Set Ω) (hA : MeasurableSet A) : Level → ℝ :=
+  fun p => ESLinf P p (linfIndicator P A hA c)
+
+/-- The subtype-based indicator `ES` test profile. -/
+def indicatorESTestProfile (c : ℝ) (A : Set Ω) (hA : MeasurableSet A) : Level → ℝ :=
+  fun p => ES P p (scaledIndicatorRV P c A hA)
+
+/-- The `L^\infty` and subtype-based indicator `ES` test profiles coincide. -/
+theorem linfIndicatorESTestProfile_eq_indicatorESTestProfile (c : ℝ) {A : Set Ω}
+    (hA : MeasurableSet A) :
+    linfIndicatorESTestProfile P c A hA = indicatorESTestProfile P c A hA := by
+  funext p
+  exact ESLinf_linfIndicator_eq_scaledIndicatorRV (P := P) p c hA
+
+/-- `ES` on `L^\infty` indicator positions depends only on the event probability. -/
+theorem ESLinf_linfIndicator_eq_of_measure_eq (p : Level) (c : ℝ) {A B : Set Ω}
+    (hA : MeasurableSet A) (hB : MeasurableSet B) (hAB : P A = P B) :
+    ESLinf P p (linfIndicator P A hA c) = ESLinf P p (linfIndicator P B hB c) := by
+  calc
+    ESLinf P p (linfIndicator P A hA c) = ES P p (scaledIndicatorRV P c A hA) :=
+      ESLinf_linfIndicator_eq_scaledIndicatorRV (P := P) p c hA
+    _ = ES P p (scaledIndicatorRV P c B hB) := by
+      exact lawInvariant_scaledIndicator_eq_of_measure_eq (P := P)
+        (ρ := ES P p) (hρ := ES_lawInvariant (P := P) p) c hA hB hAB
+    _ = ESLinf P p (linfIndicator P B hB c) := by
+      symm
+      exact ESLinf_linfIndicator_eq_scaledIndicatorRV (P := P) p c hB
+
+/-- The `L^\infty` indicator `ES` test profile depends only on the event probability. -/
+theorem linfIndicatorESTestProfile_eq_of_measure_eq (c : ℝ) {A B : Set Ω}
+    (hA : MeasurableSet A) (hB : MeasurableSet B) (hAB : P A = P B) :
+    linfIndicatorESTestProfile P c A hA = linfIndicatorESTestProfile P c B hB := by
+  funext p
+  exact ESLinf_linfIndicator_eq_of_measure_eq (P := P) p c hA hB hAB
+
+end ESProfiles
+
+end AesSubmodularity

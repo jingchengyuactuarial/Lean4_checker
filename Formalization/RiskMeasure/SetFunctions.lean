@@ -1,3 +1,4 @@
+import Formalization.RiskMeasure.Atomless
 import Formalization.RiskMeasure.Axioms
 
 /-!
@@ -33,5 +34,91 @@ def DecreasingIncrements (φ : ℝ → ℝ) : Prop :=
     φ (s + h) + φ t ≥ φ s + φ (t + h)
 
 end
+
+section ProbabilityProfiles
+
+open MeasureTheory
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω)
+
+/-- Any explicit event profile automatically depends only on event probability. -/
+theorem DependsOnlyOnProbability.of_eventProfile {μ : Set Ω → ℝ} {φ : ℝ → ℝ}
+    (hφ : EventProfile P μ φ) : DependsOnlyOnProbability P μ := by
+  intro A B hA hB hAB
+  rw [hφ hA, hφ hB, hAB]
+
+variable [IsProbabilityMeasure P]
+
+/-- An event profile over a submodular set function has decreasing increments whenever the
+underlying probability space admits exact event splitting. -/
+theorem decreasingIncrements_of_setSubmodular_of_eventProfile
+    {μ : Set Ω → ℝ} {φ : ℝ → ℝ} (hsplit : HasFullEventSplitting P)
+    (hμ : SetSubmodular μ) (hφ : EventProfile P μ φ) :
+    DecreasingIncrements φ := by
+  intro s t h hs0 hst hh0 hth1
+  have ht0 : 0 ≤ t := le_trans hs0 hst
+  have ht1 : t ≤ 1 := by linarith
+  rcases exists_measurableSet_measureReal_eq (P := P) hsplit ht0 ht1 with ⟨T, hT, hTreal⟩
+  rcases exists_subset_measurableSet_measureReal_eq (P := P) hsplit hT hs0
+      (by simpa [hTreal] using hst) with
+    ⟨S, hST, hS, hSreal⟩
+  have hhTcompl : h ≤ P.real Tᶜ := by
+    rw [probReal_compl_eq_one_sub (μ := P) hT, hTreal]
+    linarith
+  rcases exists_subset_measurableSet_measureReal_eq (P := P) hsplit hT.compl hh0 hhTcompl with
+    ⟨H, hHT, hH, hHreal⟩
+  have hSH : Disjoint S H := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hωS hωH
+    exact hHT hωH (hST hωS)
+  have hTH : Disjoint T H := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hωT hωH
+    exact hHT hωH hωT
+  have h_inter : (S ∪ H) ∩ T = S := by
+    ext ω
+    constructor
+    · intro hω
+      rcases hω with ⟨hω, hωT⟩
+      rcases hω with hωS | hωH
+      · exact hωS
+      · exact False.elim (hHT hωH hωT)
+    · intro hωS
+      exact ⟨Or.inl hωS, hST hωS⟩
+  have h_union : (S ∪ H) ∪ T = T ∪ H := by
+    ext ω
+    constructor
+    · intro hω
+      rcases hω with hω | hωT
+      · rcases hω with hωS | hωH
+        · exact Or.inl (hST hωS)
+        · exact Or.inr hωH
+      · exact Or.inl hωT
+    · intro hω
+      rcases hω with hωT | hωH
+      · exact Or.inr hωT
+      · exact Or.inl (Or.inr hωH)
+  have hSUH_real : P.real (S ∪ H) = s + h := by
+    rw [measureReal_union hSH hH, hSreal, hHreal]
+  have hTUH_real : P.real (T ∪ H) = t + h := by
+    rw [measureReal_union hTH hH, hTreal, hHreal]
+  have hS_eval : μ S = φ s := by
+    rw [hφ hS]
+    simpa [Measure.real] using congrArg φ hSreal
+  have hT_eval : μ T = φ t := by
+    rw [hφ hT]
+    simpa [Measure.real] using congrArg φ hTreal
+  have hSUH_eval : μ (S ∪ H) = φ (s + h) := by
+    rw [hφ (hS.union hH)]
+    simpa [Measure.real] using congrArg φ hSUH_real
+  have hTUH_eval : μ (T ∪ H) = φ (t + h) := by
+    rw [hφ (hT.union hH)]
+    simpa [Measure.real] using congrArg φ hTUH_real
+  have hsub : μ ((S ∪ H) ∩ T) + μ ((S ∪ H) ∪ T) ≤ μ (S ∪ H) + μ T := hμ (S ∪ H) T
+  rw [h_inter, h_union, hS_eval, hTUH_eval, hSUH_eval, hT_eval] at hsub
+  exact hsub
+
+end ProbabilityProfiles
 
 end RiskMeasure
