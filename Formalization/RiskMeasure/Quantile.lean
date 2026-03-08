@@ -1,4 +1,5 @@
 import Formalization.RiskMeasure.RandomVariable
+import Formalization.RiskMeasure.LawInvariant
 import Mathlib.Probability.CDF
 
 /-!
@@ -71,6 +72,18 @@ def VaR (p : Level) (X : RandomVariable P) : ℝ :=
 
 /-- Long-form alias for `VaR`. -/
 abbrev ValueAtRisk := VaR P
+
+/-- `VaR` factors through the law of the underlying random variable. -/
+theorem VaR_factorsThroughLaw (p : Level) : FactorsThroughLaw P (VaR P p) := by
+  refine ⟨fun μ => by
+    let _ : IsProbabilityMeasure μ.1 := μ.2
+    exact distVaR μ.1 p, ?_⟩
+  intro X
+  rfl
+
+/-- `VaR` is law-invariant. -/
+theorem VaR_lawInvariant (p : Level) : LawInvariant P (VaR P p) :=
+  (VaR_factorsThroughLaw (P := P) p).lawInvariant (P := P)
 
 end
 

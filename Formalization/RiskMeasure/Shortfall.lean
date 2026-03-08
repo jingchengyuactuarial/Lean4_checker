@@ -1,4 +1,5 @@
 import Formalization.RiskMeasure.Quantile
+import Formalization.RiskMeasure.LawInvariant
 import Mathlib.MeasureTheory.Function.EssSup
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
 
@@ -77,9 +78,45 @@ def ESProfileContinuous (X : RandomVariable P) : Prop :=
 /-- Long-form alias for `ES`. -/
 abbrev ExpectedShortfall := ES P
 
+/-- `ES` factors through the law of the underlying random variable. -/
+theorem ES_factorsThroughLaw (p : Level) : FactorsThroughLaw P (ES P p) := by
+  refine ⟨fun μ => by
+    let _ : IsProbabilityMeasure μ.1 := μ.2
+    exact distES μ.1 p, ?_⟩
+  intro X
+  rfl
+
+/-- `ES` is law-invariant. -/
+theorem ES_lawInvariant (p : Level) : LawInvariant P (ES P p) :=
+  (ES_factorsThroughLaw (P := P) p).lawInvariant (P := P)
+
+/-- The ES profile factors through law. -/
+theorem ESProfile_factorsThroughLaw : FactorsThroughLaw P (ESProfile P) := by
+  refine ⟨fun μ => by
+    let _ : IsProbabilityMeasure μ.1 := μ.2
+    exact distESProfile μ.1, ?_⟩
+  intro X
+  rfl
+
+/-- The ES profile is law-invariant. -/
+theorem ESProfile_lawInvariant : LawInvariant P (ESProfile P) :=
+  ESProfile_factorsThroughLaw (P := P) |>.lawInvariant (P := P)
+
 /-- Penalized expected shortfall for random variables. -/
 def ESg (g : Level → ℝ) (X : RandomVariable P) : ℝ :=
   distESg (law P X) g
+
+/-- `ESg` factors through the law of the underlying random variable. -/
+theorem ESg_factorsThroughLaw (g : Level → ℝ) : FactorsThroughLaw P (ESg P g) := by
+  refine ⟨fun μ => by
+    let _ : IsProbabilityMeasure μ.1 := μ.2
+    exact distESg μ.1 g, ?_⟩
+  intro X
+  rfl
+
+/-- `ESg` is law-invariant. -/
+theorem ESg_lawInvariant (g : Level → ℝ) : LawInvariant P (ESg P g) :=
+  (ESg_factorsThroughLaw (P := P) g).lawInvariant (P := P)
 
 /-- Adjusted expected shortfall for random variables. -/
 abbrev AES (g : Level → ℝ) (X : RandomVariable P) : ℝ :=
@@ -87,6 +124,14 @@ abbrev AES (g : Level → ℝ) (X : RandomVariable P) : ℝ :=
 
 /-- Long-form alias for `AES`. -/
 abbrev AdjustedExpectedShortfall := AES P
+
+/-- `AES` factors through the law of the underlying random variable. -/
+theorem AES_factorsThroughLaw (g : Level → ℝ) : FactorsThroughLaw P (AES P g) :=
+  ESg_factorsThroughLaw (P := P) g
+
+/-- `AES` is law-invariant. -/
+theorem AES_lawInvariant (g : Level → ℝ) : LawInvariant P (AES P g) :=
+  ESg_lawInvariant (P := P) g
 
 end
 
