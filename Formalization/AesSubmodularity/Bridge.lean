@@ -74,6 +74,33 @@ theorem not_tendsto_ratio_nhdsWithin_zero_of_antitoneOn_above {φ : ℝ → ℝ}
   have hmono := hanti htIoc ht1 (le_of_lt hlt_t)
   linarith
 
+/-- A function that equals `0` at the origin but stays uniformly above a positive level on
+`(0,1]` cannot be continuous at `0`. This packages the contradiction pattern behind the
+finite-penalty AES argument. -/
+theorem not_continuousAt_zero_of_uniform_lowerBound_right {φ : ℝ → ℝ} {δ : ℝ}
+    (h0 : φ 0 = 0) (hδ : 0 < δ)
+    (hpos : ∀ ⦃t : ℝ⦄, 0 < t → t ≤ 1 → δ ≤ φ t) :
+    ¬ ContinuousAt φ 0 := by
+  intro hcont
+  have hwithin : ContinuousWithinAt φ (Set.Ioi (0 : ℝ)) 0 := hcont.continuousWithinAt
+  have hnear : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), φ t < δ / 2 := by
+    have : Set.Iio (δ / 2) ∈ nhds (φ 0) := by
+      rw [h0]
+      exact Iio_mem_nhds (by linarith)
+    exact hwithin this
+  have hsmall : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t < 1 := by
+    have hset : Set.Iio (1 : ℝ) ∈ nhdsWithin (0 : ℝ) (Set.Ioi 0) := by
+      exact
+        (nhdsWithin_le_nhds : nhdsWithin (0 : ℝ) (Set.Ioi 0) ≤ nhds (0 : ℝ))
+          (Iio_mem_nhds zero_lt_one)
+    have hmem : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t ∈ Set.Iio (1 : ℝ) := hset
+    exact hmem.mono fun _ ht => ht
+  have hposf : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), 0 < t := by
+    exact self_mem_nhdsWithin
+  rcases Filter.Eventually.exists (hnear.and (hsmall.and hposf)) with ⟨t, ht, ht1, ht0⟩
+  have hδle : δ ≤ φ t := hpos ht0 (le_of_lt ht1)
+  linarith
+
 end RatioBridges
 
 section LawReduction
@@ -641,6 +668,16 @@ theorem indicatorAESProbabilityProfile_pos_of_bddAbove
   rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
   exact indicatorAESClosedForm_pos_of_bddAbove (g := g) hc hcM ht0 ht1 hgnonneg hg
 
+/-- Under a finite penalty bound, the chosen AES indicator probability profile inherits the same
+uniform lower bound as the closed form on positive masses. -/
+theorem indicatorAESProbabilityProfile_lowerBound_of_bddAbove
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c M : ℝ} (hc : 0 < c)
+    {t : ℝ} (ht0 : 0 < t) (ht1 : t ≤ 1) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hg : ∀ p : Level, g p ≤ M) :
+    c - M ≤ indicatorAESProbabilityProfile P hsplit g c t := by
+  rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
+  exact indicatorAESClosedForm_lowerBound_of_bddAbove (g := g) hc ht0 ht1 hgnonneg hg
+
 /-- The chosen AES indicator probability profile inherits the same payoff upper bound on `(0,1]`
 once it is identified with the closed form. -/
 theorem indicatorAESProbabilityProfile_le_of_nonneg
@@ -712,6 +749,21 @@ theorem finitePenalty_indicatorAESProfile_bridge
   · exact indicatorAESProbabilityProfile_bddAbove_on_Ioc (P := P) hsplit g hc hgnonneg
   · exact indicatorAESProbabilityProfile_bddBelow_on_Ioc_of_bddAbove (P := P)
       hsplit g hc hcM hgnonneg hg
+
+/-- Finite-penalty contradiction template: once one knows that the indicator AES profile is
+continuous at the origin and vanishes there, the uniform lower bound on positive masses rules this
+out. This isolates the exact point where the original finite-case proof must supply extra input. -/
+theorem finitePenalty_indicatorAES_contradiction_of_continuousAt_zero
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c M : ℝ}
+    (hc : 0 < c) (hcM : M < c) (hzero : indicatorAESProbabilityProfile P hsplit g c 0 = 0)
+    (hcont : ContinuousAt (indicatorAESProbabilityProfile P hsplit g c) 0)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) (hg : ∀ p : Level, g p ≤ M) :
+    False := by
+  have hδ : 0 < c - M := by linarith
+  refine not_continuousAt_zero_of_uniform_lowerBound_right hzero hδ ?_ hcont
+  intro t ht0 ht1
+  exact indicatorAESProbabilityProfile_lowerBound_of_bddAbove (P := P) hsplit g hc ht0 ht1
+    hgnonneg hg
 
 /-- If the penalty vanishes at a level `r`, then the indicator-level AES closed form dominates the
 corresponding lower-bound line near the origin. This is the lower-bound half of the origin-slope
