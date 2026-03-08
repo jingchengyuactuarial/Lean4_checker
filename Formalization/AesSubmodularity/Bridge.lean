@@ -732,6 +732,11 @@ theorem indicatorAESProbabilityProfile_zero_eq_zero
 appears in the infinite-left AES statement. -/
 def zeroSetReal (g : Level → ℝ) : Set ℝ := {x : ℝ | ∃ p : Level, (p : ℝ) = x ∧ g p = 0}
 
+/-- Fixed-level eventual largeness near the right endpoint `1`. This is the proof-friendly
+version of the tail penalty condition used in the infinite-left AES argument. -/
+def EventuallyLargeBeforeOne (g : Level → ℝ) (c : ℝ) : Prop :=
+  ∃ bar : Level, (bar : ℝ) < 1 ∧ ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p
+
 /-- If `p₀` is the least upper bound of the zero set of `g`, then every level strictly above `p₀`
 has strictly positive penalty, provided `g ≥ 0`. -/
 theorem positive_of_gt_isLUB_zeroSetReal
@@ -745,6 +750,37 @@ theorem positive_of_gt_isLUB_zeroSetReal
     have hq_le : (q : ℝ) ≤ p0 := hupper hq_mem
     linarith
   exact lt_of_le_of_ne (hgnonneg q) (Ne.symm hq_ne)
+
+/-- A tail witness `bar < 1` can always be enlarged to sit above a prescribed `q₀ < 1`, while
+preserving the same eventual lower bound. -/
+theorem exists_tailWitnessAbove_of_eventuallyLargeBeforeOne
+    (g : Level → ℝ) {c : ℝ} {q0 : Level} (hq01 : (q0 : ℝ) < 1)
+    (htail : EventuallyLargeBeforeOne g c) :
+    ∃ bar : Level, (q0 : ℝ) < (bar : ℝ) ∧ (bar : ℝ) < 1 ∧
+      ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p := by
+  rcases htail with ⟨b, hb1, hbLarge⟩
+  let qmid : Level := ⟨((q0 : ℝ) + 1) / 2, by
+    constructor
+    · have hq0_nonneg : 0 ≤ (q0 : ℝ) := q0.2.1
+      linarith
+    · linarith⟩
+  have hqmid1 : (qmid : ℝ) < 1 := by
+    change (((q0 : ℝ) + 1) / 2) < 1
+    linarith
+  let bar : Level := ⟨max (b : ℝ) (qmid : ℝ), by
+    constructor
+    · exact le_trans b.2.1 (le_max_left _ _)
+    · exact (max_lt_iff.mpr ⟨hb1, hqmid1⟩).le⟩
+  refine ⟨bar, ?_, ?_, ?_⟩
+  · change (q0 : ℝ) < max (b : ℝ) (qmid : ℝ)
+    have hq0qmid : (q0 : ℝ) < (qmid : ℝ) := by
+      change (q0 : ℝ) < ((q0 : ℝ) + 1) / 2
+      linarith
+    exact lt_of_lt_of_le hq0qmid (le_max_right _ _)
+  · change max (b : ℝ) (qmid : ℝ) < 1
+    exact max_lt_iff.mpr ⟨hb1, hqmid1⟩
+  · intro p hp
+    exact hbLarge p (lt_of_le_of_lt (le_max_left _ _) hp)
 
 /-- If `g` is bounded above by `M` on `[0,1]`, then the indicator-level AES closed form enjoys a
 uniform positive lower bound on `(0,1]` as soon as `c > M`. This is the quantitative ingredient
@@ -1412,6 +1448,23 @@ theorem infiniteLeft_indicatorAES_contradiction_of_submodular_eventuallyLarge_of
   have hq0pos := positive_of_gt_isLUB_zeroSetReal g hsup hgnonneg hp0q0
   exact infiniteLeft_indicatorAES_contradiction_of_submodular_eventuallyLarge (P := P) hsplit g
     hc hsub hg0 hmono hgnonneg hq0p1 hq0pos hp1 hc_large htail
+
+/-- Same contradiction theorem, now stated with the more natural fixed-level tail assumption
+`EventuallyLargeBeforeOne g c` instead of an explicit cutoff witness. -/
+theorem infiniteLeft_indicatorAES_contradiction_of_submodular_leftLarge_of_isLUB
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c p0 : ℝ}
+    (hc : 0 < c) (hsub : Submodular (AES P g)) (hg0 : g 0 = 0)
+    (hmono : _root_.Monotone g) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hsup : IsLUB (zeroSetReal g) p0) (htail : EventuallyLargeBeforeOne g c)
+    {q0 p1 : Level} (hp0q0 : p0 < (q0 : ℝ)) (hq0p1 : (q0 : ℝ) < (p1 : ℝ))
+    (hp1 : (p1 : ℝ) < 1)
+    (hc_large : g p1 * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) < c) :
+    False := by
+  have hq01 : (q0 : ℝ) < 1 := lt_trans hq0p1 hp1
+  have htail' :=
+    exists_tailWitnessAbove_of_eventuallyLargeBeforeOne g hq01 htail
+  exact infiniteLeft_indicatorAES_contradiction_of_submodular_eventuallyLarge_of_isLUB (P := P)
+    hsplit g hc hsub hg0 hmono hgnonneg hsup hp0q0 hq0p1 hp1 hc_large htail'
 
 /-- Infinite-left contradiction template with the origin value discharged automatically by
 `g(0) = 0`. -/
