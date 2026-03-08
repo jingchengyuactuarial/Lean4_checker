@@ -1,69 +1,159 @@
 import Formalization.RiskMeasure.Basic
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
+import Mathlib.Probability.CDF
+import Mathlib.Probability.HasLaw
+import Mathlib.Topology.UnitInterval
 
 /-!
-# Common Risk-Measure Interfaces
+# Common Risk Measures
 
-This file introduces names for standard families of risk measures that appear
-throughout the actuarial and mathematical-finance literature.
+This file records concrete measure-theoretic definitions for several standard
+risk measures. The guiding choice is to define each object first on a real
+probability law, and then lift it to real-valued random variables by pushforward.
 
-At this stage the emphasis is on reusable interfaces rather than on committing
-to one fully formalized probabilistic implementation for every example.
+At the current stage:
+
+- `variance` reuses the existing `mathlib` definition `Var[X; P]`;
+- `VaR` is defined through the lower quantile built from `cdf`;
+- `ES` is defined as the normalized integral of `VaR`;
+- `ESg` and `AES` are defined through a penalty/supremum envelope;
+- `MAD` is defined around the mean;
+- `median` is defined as the lower median, i.e. the `1/2` quantile;
+- `MMD` is defined from that median.
 -/
+
+noncomputable section
+
+open MeasureTheory
+open scoped ProbabilityTheory
 
 namespace RiskMeasure
 
-section Families
+/-- Confidence levels live in the unit interval `[0,1]`. -/
+abbrev Level := unitInterval
 
-variable (I X C : Type*)
+section DistributionLevel
 
-/-- Value-at-Risk as an indexed family of risk measures. -/
-abbrev ValueAtRisk := I → X → C
+/-- Lower quantile of a real probability law, defined via the cumulative distribution function. -/
+def distLowerQuantile (μ : Measure ℝ) [IsProbabilityMeasure μ] (p : ℝ) : ℝ :=
+  sInf {x : ℝ | p ≤ ProbabilityTheory.cdf μ x}
 
-/-- Short alias for Value-at-Risk. -/
-abbrev VaR := ValueAtRisk I X C
+/-- Distribution-level Value-at-Risk. -/
+def distVaR (μ : Measure ℝ) [IsProbabilityMeasure μ] (p : Level) : ℝ :=
+  distLowerQuantile μ (p : ℝ)
 
-/-- Expected shortfall / CVaR as an indexed family of risk measures. -/
-abbrev ExpectedShortfall := I → X → C
+/-- The endpoint quantile used for the `p = 1` branch of expected shortfall. -/
+def distUpperQuantile (μ : Measure ℝ) [IsProbabilityMeasure μ] : ℝ :=
+  distLowerQuantile μ 1
 
-/-- Short alias for expected shortfall. -/
-abbrev ES := ExpectedShortfall I X C
+/-- The unnormalized integral appearing in the standard quantile representation of ES. -/
+def distESIntegral (μ : Measure ℝ) [IsProbabilityMeasure μ] (p : Level) : ℝ :=
+  ∫ q in (p : ℝ)..1, distLowerQuantile μ q
 
-/-- Mean absolute deviation. -/
-abbrev MeanAbsoluteDeviation := X → C
+/-- Distribution-level expected shortfall. -/
+def distES (μ : Measure ℝ) [IsProbabilityMeasure μ] (p : Level) : ℝ :=
+  if _ : (p : ℝ) < 1 then
+    (1 - (p : ℝ))⁻¹ * distESIntegral μ p
+  else
+    distUpperQuantile μ
 
-/-- Mean-median deviation. -/
-abbrev MeanMedianDeviation := X → C
+/-- Penalized expected shortfall at the distribution level. -/
+def distESg (μ : Measure ℝ) [IsProbabilityMeasure μ] (g : Level → ℝ) : ℝ :=
+  sSup (Set.range fun p : Level => distES μ p - g p)
 
-/-- Variance viewed as a risk functional. -/
-abbrev Variance := X → C
+/-- Adjusted expected shortfall at the distribution level. -/
+abbrev distAES (μ : Measure ℝ) [IsProbabilityMeasure μ] (g : Level → ℝ) : ℝ :=
+  distESg μ g
 
-end Families
+/-- Absolute deviation around a chosen center. -/
+def distAbsDeviationAt (μ : Measure ℝ) (c : ℝ) : ℝ :=
+  ∫ x, |x - c| ∂μ
 
-section PenalizedShortfall
+/-- Distribution-level mean absolute deviation. -/
+def distMAD (μ : Measure ℝ) [IsProbabilityMeasure μ] : ℝ :=
+  distAbsDeviationAt μ (μ[id])
 
-variable {I X C : Type*}
+/-- Distribution-level lower median, defined as the `1/2` lower quantile. -/
+def distMedian (μ : Measure ℝ) [IsProbabilityMeasure μ] : ℝ :=
+  distLowerQuantile μ (1 / 2 : ℝ)
 
-/-- Penalized expected shortfall built from an ES family and a penalty profile. -/
-def ExpectedShortfallWithPenalty [SupSet C] [Sub C]
-    (es : I → X → C) (g : I → C) : X → C :=
-  fun x => sSup (Set.range fun i => es i x - g i)
+/-- Distribution-level mean median deviation. -/
+def distMMD (μ : Measure ℝ) [IsProbabilityMeasure μ] : ℝ :=
+  distAbsDeviationAt μ (distMedian μ)
 
-/-- Short alias used in parts of the literature for penalized expected shortfall. -/
-abbrev ESg [SupSet C] [Sub C] (es : I → X → C) (g : I → C) : X → C :=
-  ExpectedShortfallWithPenalty es g
+/-- Distribution-level variance reusing `mathlib`. -/
+def distVariance (μ : Measure ℝ) [IsProbabilityMeasure μ] : ℝ :=
+  Var[id; μ]
 
-/-- Adjusted expected shortfall. -/
-abbrev AdjustedExpectedShortfall [SupSet C] [Sub C]
-    (es : I → X → C) (g : I → C) : X → C :=
-  ExpectedShortfallWithPenalty es g
+end DistributionLevel
 
-/-- Short alias for adjusted expected shortfall. -/
-abbrev AES [SupSet C] [Sub C] (es : I → X → C) (g : I → C) : X → C :=
-  AdjustedExpectedShortfall es g
+section RandomVariables
 
-example [SupSet C] [Sub C] (es : I → X → C) (g : I → C) :
-    AES es g = ESg es g := rfl
+variable {Ω : Type*} [MeasurableSpace Ω]
 
-end PenalizedShortfall
+/-- Real-valued random variables represented by almost-everywhere measurable functions. -/
+abbrev RandomVariable (P : Measure Ω) := {X : Ω → ℝ // AEMeasurable X P}
+
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+/-- The law of an almost-everywhere measurable real random variable. -/
+def law (X : RandomVariable P) : Measure ℝ :=
+  P.map X
+
+instance instIsProbabilityMeasureLaw (X : RandomVariable P) :
+    IsProbabilityMeasure (law P X) :=
+  Measure.isProbabilityMeasure_map X.2
+
+/-- Value-at-Risk for random variables under the reference probability measure `P`. -/
+def VaR (p : Level) (X : RandomVariable P) : ℝ :=
+  distVaR (law P X) p
+
+/-- Long-form alias for `VaR`. -/
+abbrev ValueAtRisk := VaR P
+
+/-- Expected shortfall for random variables under the reference probability measure `P`. -/
+def ES (p : Level) (X : RandomVariable P) : ℝ :=
+  distES (law P X) p
+
+/-- Long-form alias for `ES`. -/
+abbrev ExpectedShortfall := ES P
+
+/-- Penalized expected shortfall for random variables. -/
+def ESg (g : Level → ℝ) (X : RandomVariable P) : ℝ :=
+  distESg (law P X) g
+
+/-- Adjusted expected shortfall for random variables. -/
+abbrev AES (g : Level → ℝ) (X : RandomVariable P) : ℝ :=
+  ESg P g X
+
+/-- Long-form alias for `AES`. -/
+abbrev AdjustedExpectedShortfall := AES P
+
+/-- Mean absolute deviation for random variables. -/
+def MAD (X : RandomVariable P) : ℝ :=
+  distMAD (law P X)
+
+/-- Long-form alias for `MAD`. -/
+abbrev MeanAbsoluteDeviation := MAD P
+
+/-- Lower median for random variables under the reference probability measure `P`. -/
+def median (X : RandomVariable P) : ℝ :=
+  distMedian (law P X)
+
+/-- Mean median deviation for random variables. -/
+def MMD (X : RandomVariable P) : ℝ :=
+  distMMD (law P X)
+
+/-- Long-form alias for `MMD`. -/
+abbrev MeanMedianDeviation := MMD P
+
+/-- Variance for random variables, reusing `mathlib`'s `Var`. -/
+def variance (X : RandomVariable P) : ℝ :=
+  Var[X; P]
+
+/-- Long-form alias for `variance`. -/
+abbrev Variance := variance P
+
+end RandomVariables
 
 end RiskMeasure
