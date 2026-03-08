@@ -1,4 +1,5 @@
 import Formalization.RiskMeasure
+import Mathlib.Analysis.Convex.Slope
 
 /-!
 # AES Bridge Lemmas
@@ -15,9 +16,65 @@ They are intentionally narrower than the reusable risk-measure API:
 noncomputable section
 
 open MeasureTheory
+open Filter
 open RiskMeasure
 
 namespace AesSubmodularity
+
+section RatioBridges
+
+/-- On `(0,1]`, a concave profile with value `0` at the origin has a nonincreasing ratio
+`φ(t) / t`. This is the slope monotonicity step used in the infinite-left AES argument. -/
+theorem ratio_antitoneOn_of_concaveOn_zero {φ : ℝ → ℝ}
+    (hconc : ConcaveOn ℝ (Set.Icc (0 : ℝ) 1) φ) (h0 : φ 0 = 0) :
+    AntitoneOn (fun t : ℝ => φ t / t) (Set.Ioc (0 : ℝ) 1) := by
+  intro s hs t ht hst
+  have hneg := hconc.neg
+  have hs_ne : s ≠ 0 := ne_of_gt hs.1
+  have ht_ne : t ≠ 0 := ne_of_gt ht.1
+  have key := hneg.secant_mono (show (0 : ℝ) ∈ Set.Icc (0 : ℝ) 1 by simp)
+    (show s ∈ Set.Icc (0 : ℝ) 1 by exact ⟨le_of_lt hs.1, hs.2⟩)
+    (show t ∈ Set.Icc (0 : ℝ) 1 by exact ⟨le_of_lt ht.1, ht.2⟩)
+    hs_ne ht_ne hst
+  have key' : (-φ s) / s ≤ (-φ t) / t := by
+    simpa [h0] using key
+  have key'' : -(φ s / s) ≤ -(φ t / t) := by
+    simpa [neg_div] using key'
+  linarith
+
+/-- A ratio profile that is antitone on `(0,1]` cannot converge to `L` at the right-hand origin
+while taking a strictly larger value at some positive point. -/
+theorem not_tendsto_ratio_nhdsWithin_zero_of_antitoneOn_above {φ : ℝ → ℝ} {L t1 : ℝ}
+    (hanti : AntitoneOn (fun t : ℝ => φ t / t) (Set.Ioc (0 : ℝ) 1))
+    (ht1 : t1 ∈ Set.Ioc (0 : ℝ) 1)
+    (hgt : L < φ t1 / t1)
+    (hlim : Tendsto (fun t : ℝ => φ t / t) (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds L)) :
+    False := by
+  let m : ℝ := (L + φ t1 / t1) / 2
+  have hLm : L < m := by
+    dsimp [m]
+    linarith
+  have hm1 : m < φ t1 / t1 := by
+    dsimp [m]
+    linarith
+  have hnear : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), φ t / t < m := by
+    exact hlim (Iio_mem_nhds hLm)
+  have hpos : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), 0 < t := by
+    exact self_mem_nhdsWithin
+  have hltSet : Set.Iio t1 ∈ nhdsWithin (0 : ℝ) (Set.Ioi 0) := by
+    exact
+      (nhdsWithin_le_nhds : nhdsWithin (0 : ℝ) (Set.Ioi 0) ≤ nhds (0 : ℝ))
+        (Iio_mem_nhds ht1.1)
+  have hlt : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t < t1 := by
+    have hmem : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t ∈ Set.Iio t1 := hltSet
+    exact hmem.mono fun _ ht => ht
+  have hcomb := hnear.and (hpos.and hlt)
+  rcases Filter.Eventually.exists hcomb with ⟨t, ht, hpos_t, hlt_t⟩
+  have htIoc : t ∈ Set.Ioc (0 : ℝ) 1 := ⟨hpos_t, le_trans (le_of_lt hlt_t) ht1.2⟩
+  have hmono := hanti htIoc ht1 (le_of_lt hlt_t)
+  linarith
+
+end RatioBridges
 
 section LawReduction
 
@@ -655,6 +712,151 @@ theorem finitePenalty_indicatorAESProfile_bridge
   · exact indicatorAESProbabilityProfile_bddAbove_on_Ioc (P := P) hsplit g hc hgnonneg
   · exact indicatorAESProbabilityProfile_bddBelow_on_Ioc_of_bddAbove (P := P)
       hsplit g hc hcM hgnonneg hg
+
+/-- If the penalty vanishes at a level `r`, then the indicator-level AES closed form dominates the
+corresponding lower-bound line near the origin. This is the lower-bound half of the origin-slope
+argument in the infinite-left AES proof. -/
+theorem indicatorAESClosedForm_ratio_ge_of_zeroPenalty
+    (g : Level → ℝ) {c : ℝ} (hc : 0 < c) (hgnonneg : ∀ p : Level, 0 ≤ g p) {r : Level}
+    (hgr : g r = 0) {t : ℝ} (ht0 : 0 < t) (hrt : t < 1 - (r : ℝ)) :
+    c / (1 - (r : ℝ)) ≤ indicatorAESClosedForm g c t / t := by
+  have hr_lt : (r : ℝ) < 1 := by linarith
+  have hden_pos : 0 < 1 - (r : ℝ) := sub_pos.mpr hr_lt
+  have hrange :
+      indicatorESClosedForm c t r - g r ∈
+        Set.range (fun q : Level => indicatorESClosedForm c t q - g q) := by
+    exact ⟨r, rfl⟩
+  have hsSup :
+      indicatorESClosedForm c t r - g r ≤ indicatorAESClosedForm g c t := by
+    unfold indicatorAESClosedForm
+    refine le_csSup ?_ hrange
+    refine ⟨c, ?_⟩
+    rintro _ ⟨q, rfl⟩
+    by_cases hq : (q : ℝ) < 1
+    · have hmin_le : min 1 (t / (1 - (q : ℝ))) ≤ 1 := min_le_left _ _
+      have hmul_le : c * min 1 (t / (1 - (q : ℝ))) ≤ c := by
+        nlinarith [hmin_le, hc]
+      calc
+        indicatorESClosedForm c t q - g q = c * min 1 (t / (1 - (q : ℝ))) - g q := by
+          simp [indicatorESClosedForm, hq]
+        _ ≤ c * min 1 (t / (1 - (q : ℝ))) := by
+          linarith [hgnonneg q]
+        _ ≤ c := hmul_le
+    · simp [indicatorESClosedForm, hq]
+      linarith [hgnonneg q]
+  have hr_eval : indicatorESClosedForm c t r = c * (t / (1 - (r : ℝ))) := by
+    have hratio_lt_one : t / (1 - (r : ℝ)) < 1 := by
+      rw [div_lt_one hden_pos]
+      simpa using hrt
+    have hmin :
+        min 1 (t / (1 - (r : ℝ))) = t / (1 - (r : ℝ)) :=
+      min_eq_right (le_of_lt hratio_lt_one)
+    simp [indicatorESClosedForm, hr_lt, hmin]
+  have hcore : c * (t / (1 - (r : ℝ))) ≤ indicatorAESClosedForm g c t := by
+    simpa [hr_eval, hgr] using hsSup
+  have ht_ne : t ≠ 0 := ne_of_gt ht0
+  have hden_ne : 1 - (r : ℝ) ≠ 0 := ne_of_gt hden_pos
+  apply (le_div_iff₀ ht0).mpr
+  calc
+    c / (1 - (r : ℝ)) * t = c * (t / (1 - (r : ℝ))) := by
+      field_simp [hden_ne]
+    _ ≤ indicatorAESClosedForm g c t := hcore
+
+/-- Transport the zero-penalty lower bound to the chosen AES indicator probability profile. -/
+theorem indicatorAESProbabilityProfile_ratio_ge_of_zeroPenalty
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c : ℝ}
+    (hc : 0 < c) (hgnonneg : ∀ p : Level, 0 ≤ g p) {r : Level}
+    (hgr : g r = 0) {t : ℝ} (ht0 : 0 < t) (ht1 : t ≤ 1) (hrt : t < 1 - (r : ℝ)) :
+    c / (1 - (r : ℝ)) ≤ indicatorAESProbabilityProfile P hsplit g c t / t := by
+  rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
+  exact indicatorAESClosedForm_ratio_ge_of_zeroPenalty (g := g) hc hgnonneg hgr ht0 hrt
+
+/-- Evaluating the indicator-level AES closed form at the matching level `t = 1 - p` yields a
+pointwise lower bound by `c - g(p)`. -/
+theorem indicatorAESClosedForm_ratio_ge_at_level
+    (g : Level → ℝ) {c : ℝ} (hc : 0 < c) (hgnonneg : ∀ p : Level, 0 ≤ g p) {p : Level}
+    (hp : (p : ℝ) < 1) :
+    (c - g p) / (1 - (p : ℝ)) ≤ indicatorAESClosedForm g c (1 - (p : ℝ)) / (1 - (p : ℝ)) := by
+  have ht0 : 0 < 1 - (p : ℝ) := sub_pos.mpr hp
+  have hrange :
+      indicatorESClosedForm c (1 - (p : ℝ)) p - g p ∈
+        Set.range (fun q : Level => indicatorESClosedForm c (1 - (p : ℝ)) q - g q) := by
+    exact ⟨p, rfl⟩
+  have hsSup :
+      indicatorESClosedForm c (1 - (p : ℝ)) p - g p ≤
+        indicatorAESClosedForm g c (1 - (p : ℝ)) := by
+    unfold indicatorAESClosedForm
+    refine le_csSup ?_ hrange
+    refine ⟨c, ?_⟩
+    rintro _ ⟨q, rfl⟩
+    by_cases hq : (q : ℝ) < 1
+    · have hmin_le : min 1 ((1 - (p : ℝ)) / (1 - (q : ℝ))) ≤ 1 := min_le_left _ _
+      have hmul_le : c * min 1 ((1 - (p : ℝ)) / (1 - (q : ℝ))) ≤ c := by
+        nlinarith [hmin_le, hc]
+      calc
+        indicatorESClosedForm c (1 - (p : ℝ)) q - g q =
+            c * min 1 ((1 - (p : ℝ)) / (1 - (q : ℝ))) - g q := by
+          simp [indicatorESClosedForm, hq]
+        _ ≤ c * min 1 ((1 - (p : ℝ)) / (1 - (q : ℝ))) := by
+          linarith [hgnonneg q]
+        _ ≤ c := hmul_le
+    · simp [indicatorESClosedForm, hq]
+      linarith [hgnonneg q]
+  have hp_eval : indicatorESClosedForm c (1 - (p : ℝ)) p = c := by
+    have hmin : min 1 ((1 - (p : ℝ)) / (1 - (p : ℝ))) = (1 : ℝ) := by
+      have hden_pos : 0 < 1 - (p : ℝ) := sub_pos.mpr hp
+      have hden_ne : 1 - (p : ℝ) ≠ 0 := ne_of_gt hden_pos
+      rw [div_self hden_ne, min_eq_left le_rfl]
+    simp [indicatorESClosedForm, hp, hmin]
+  have hcore : c - g p ≤ indicatorAESClosedForm g c (1 - (p : ℝ)) := by
+    simpa [hp_eval] using hsSup
+  have hinv_nonneg : 0 ≤ (1 - (p : ℝ))⁻¹ := by positivity
+  simpa [div_eq_mul_inv] using mul_le_mul_of_nonneg_right hcore hinv_nonneg
+
+/-- Transport the pointwise lower bound at `t = 1 - p` to the chosen AES indicator profile. -/
+theorem indicatorAESProbabilityProfile_ratio_ge_at_level
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c : ℝ}
+    (hc : 0 < c) (hgnonneg : ∀ p : Level, 0 ≤ g p) {p : Level}
+    (hp : (p : ℝ) < 1) :
+    (c - g p) / (1 - (p : ℝ)) ≤
+      indicatorAESProbabilityProfile P hsplit g c (1 - (p : ℝ)) / (1 - (p : ℝ)) := by
+  have ht0 : 0 < 1 - (p : ℝ) := sub_pos.mpr hp
+  have hp_nonneg : 0 ≤ (p : ℝ) := p.2.1
+  have ht1 : 1 - (p : ℝ) ≤ 1 := by
+    linarith
+  rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
+  exact indicatorAESClosedForm_ratio_ge_at_level (g := g) hc hgnonneg hp
+
+/-- Lean-valid contradiction template for the infinite-left AES argument: once one has
+origin-slope control and concavity of the indicator profile, any strictly larger ratio at a
+positive point is impossible. -/
+theorem infiniteLeft_indicatorAES_contradiction_of_concave_originSlope
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {c p0 : ℝ}
+    (hc : 0 < c) (hp0 : p0 ∈ Set.Icc (0 : ℝ) 1) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hconc :
+      ConcaveOn ℝ (Set.Icc (0 : ℝ) 1) (indicatorAESProbabilityProfile P hsplit g c))
+    (hzero : indicatorAESProbabilityProfile P hsplit g c 0 = 0)
+    (hlim :
+      Tendsto (fun t => indicatorAESProbabilityProfile P hsplit g c t / t)
+        (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds (c / (1 - p0))))
+    {p1 : Level} (hp0p1 : p0 < (p1 : ℝ)) (hp1 : (p1 : ℝ) < 1)
+    (hpoint : c / (1 - p0) < (c - g p1) / (1 - (p1 : ℝ))) :
+    False := by
+  have hanti :
+      AntitoneOn (fun t : ℝ => indicatorAESProbabilityProfile P hsplit g c t / t)
+        (Set.Ioc (0 : ℝ) 1) :=
+    ratio_antitoneOn_of_concaveOn_zero hconc hzero
+  have ht1 : 1 - (p1 : ℝ) ∈ Set.Ioc (0 : ℝ) 1 := by
+    constructor
+    · linarith
+    · linarith [hp0.1, hp1]
+  have hratio :
+      c / (1 - p0) <
+        indicatorAESProbabilityProfile P hsplit g c (1 - (p1 : ℝ)) / (1 - (p1 : ℝ)) := by
+    have hlower :=
+      indicatorAESProbabilityProfile_ratio_ge_at_level (P := P) hsplit g hc hgnonneg hp1
+    exact lt_of_lt_of_le hpoint hlower
+  exact not_tendsto_ratio_nhdsWithin_zero_of_antitoneOn_above hanti ht1 hratio hlim
 
 end EventProfiles
 
