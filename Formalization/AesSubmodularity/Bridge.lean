@@ -272,6 +272,276 @@ private theorem scaledIndicatorLaw_apply (c : ℝ) {A : Set Ω} {s : Set ℝ} (h
     Measure.dirac_apply' _ hs, Measure.dirac_apply' _ hs]
   by_cases hc : c ∈ s <;> by_cases h0 : (0 : ℝ) ∈ s <;> simp [hc, h0]
 
+private theorem layeredIndicatorLaw_apply_Iic (low high : ℝ) {A D : Set Ω} (x : ℝ) :
+    layeredIndicatorLaw P low high A D (Set.Iic x) =
+      (if high ≤ x then P A else 0) +
+        (if low ≤ x then P (D \ A) else 0) +
+          (if 0 ≤ x then P Dᶜ else 0) := by
+  rw [layeredIndicatorLaw, Measure.add_apply, Measure.add_apply, Measure.smul_apply,
+    Measure.smul_apply, Measure.smul_apply, Measure.dirac_apply' _ measurableSet_Iic,
+    Measure.dirac_apply' _ measurableSet_Iic, Measure.dirac_apply' _ measurableSet_Iic]
+  by_cases hhigh : high ≤ x <;> by_cases hlow : low ≤ x <;> by_cases h0 : 0 ≤ x <;>
+    simp [Set.mem_Iic, hhigh, hlow, h0, add_assoc]
+
+private theorem cdf_layeredIndicatorLaw_of_lt_zero
+    (low high : ℝ) (hlow : 0 ≤ low) (hlowhigh : low ≤ high) {A D : Set Ω}
+    (hA : MeasurableSet A) (hD : MeasurableSet D) (hAD : A ⊆ D)
+    {x : ℝ} (hx : x < 0) :
+    ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) x = 0 := by
+  haveI : IsProbabilityMeasure (layeredIndicatorLaw P low high A D) := by
+    rw [← law_layeredIndicatorRV_eq_layeredIndicatorLaw (P := P) low high hA hD hAD]
+    infer_instance
+  rw [ProbabilityTheory.cdf_eq_real, measureReal_def,
+    layeredIndicatorLaw_apply_Iic (P := P) low high x]
+  have hhighx : ¬ high ≤ x := not_le.mpr (lt_of_lt_of_le hx (le_trans hlow hlowhigh))
+  have hlowx : ¬ low ≤ x := not_le.mpr (lt_of_lt_of_le hx hlow)
+  have h0x : ¬ 0 ≤ x := not_le.mpr hx
+  simp [hhighx, hlowx, h0x]
+
+private theorem cdf_layeredIndicatorLaw_of_nonneg_lt_low
+    (low high : ℝ) (_hlow : 0 ≤ low) (hlowhigh : low ≤ high) {A D : Set Ω}
+    (hA : MeasurableSet A) (hD : MeasurableSet D) (hAD : A ⊆ D)
+    {x : ℝ} (hx0 : 0 ≤ x) (hxlow : x < low) :
+    ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) x = P.real Dᶜ := by
+  haveI : IsProbabilityMeasure (layeredIndicatorLaw P low high A D) := by
+    rw [← law_layeredIndicatorRV_eq_layeredIndicatorLaw (P := P) low high hA hD hAD]
+    infer_instance
+  rw [ProbabilityTheory.cdf_eq_real, measureReal_def,
+    layeredIndicatorLaw_apply_Iic (P := P) low high x]
+  have hhighx : ¬ high ≤ x := not_le.mpr (lt_of_lt_of_le hxlow hlowhigh)
+  have hlowx : ¬ low ≤ x := not_le.mpr hxlow
+  simp [Measure.real, hhighx, hlowx, hx0]
+
+private theorem cdf_layeredIndicatorLaw_of_low_le_lt_high
+    (low high : ℝ) (hlow : 0 ≤ low) (hlowhigh : low ≤ high) {A D : Set Ω}
+    (hA : MeasurableSet A) (hD : MeasurableSet D) (hAD : A ⊆ D)
+    {x : ℝ} (hlowx : low ≤ x) (hxhigh : x < high) :
+    ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) x = P.real Aᶜ := by
+  haveI : IsProbabilityMeasure (layeredIndicatorLaw P low high A D) := by
+    rw [← law_layeredIndicatorRV_eq_layeredIndicatorLaw (P := P) low high hA hD hAD]
+    infer_instance
+  have hAc_eq : Aᶜ = (D \ A) ∪ Dᶜ := by
+    ext ω
+    constructor
+    · intro hωAc
+      by_cases hωD : ω ∈ D
+      · exact Or.inl ⟨hωD, hωAc⟩
+      · exact Or.inr hωD
+    · intro hω
+      rcases hω with hω | hω
+      · exact hω.2
+      · intro hωA
+        exact hω (hAD hωA)
+  have hdisj_diff_compl : Disjoint (D \ A) Dᶜ := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hωDA hωDc
+    exact hωDc hωDA.1
+  rw [ProbabilityTheory.cdf_eq_real, measureReal_def,
+    layeredIndicatorLaw_apply_Iic (P := P) low high x]
+  have hhighx : ¬ high ≤ x := not_le.mpr hxhigh
+  have hx0 : 0 ≤ x := le_trans hlow hlowx
+  have hsum : P (D \ A) + P Dᶜ = P Aᶜ := by
+    rw [← measure_union hdisj_diff_compl hD.compl, hAc_eq]
+  simp [Measure.real, hhighx, hlowx, hx0, hsum]
+
+private theorem cdf_layeredIndicatorLaw_of_le_high
+    (low high : ℝ) (hlow : 0 ≤ low) (hlowhigh : low ≤ high) {A D : Set Ω}
+    (hA : MeasurableSet A) (hD : MeasurableSet D) (hAD : A ⊆ D)
+    {x : ℝ} (hhighx : high ≤ x) :
+    ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) x = 1 := by
+  haveI : IsProbabilityMeasure (layeredIndicatorLaw P low high A D) := by
+    rw [← law_layeredIndicatorRV_eq_layeredIndicatorLaw (P := P) low high hA hD hAD]
+    infer_instance
+  rw [ProbabilityTheory.cdf_eq_real, measureReal_def,
+    layeredIndicatorLaw_apply_Iic (P := P) low high x]
+  have hlowx : low ≤ x := le_trans hlowhigh hhighx
+  have hx0 : 0 ≤ x := le_trans hlow hlowx
+  have hdisj_A_diff : Disjoint A (D \ A) := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hωA hωDA
+    exact hωDA.2 hωA
+  have hdisj_union_compl : Disjoint (A ∪ (D \ A)) Dᶜ := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hω hωDc
+    rcases hω with hωA | hωDA
+    · exact hωDc (hAD hωA)
+    · exact hωDc hωDA.1
+  have hsum : P A + P (D \ A) + P Dᶜ = 1 := by
+    calc
+      P A + P (D \ A) + P Dᶜ = P (A ∪ (D \ A)) + P Dᶜ := by
+        rw [measure_union hdisj_A_diff (hD.diff hA)]
+      _ = P ((A ∪ (D \ A)) ∪ Dᶜ) := by
+        rw [measure_union hdisj_union_compl hD.compl]
+      _ = P Set.univ := by
+        congr
+        ext ω
+        constructor
+        · intro hω
+          simp
+        · intro hω
+          by_cases hωD : ω ∈ D
+          · by_cases hωA : ω ∈ A
+            · exact Or.inl (Or.inl hωA)
+            · exact Or.inl (Or.inr ⟨hωD, hωA⟩)
+          · exact Or.inr hωD
+      _ = 1 := by simp
+  simp [hhighx, hlowx, hx0, hsum]
+
+private theorem distLowerQuantile_layeredIndicator_eq_indicator
+    (low high : ℝ) (hlow : 0 < low) (hlowhigh : low < high) {A D : Set Ω}
+    (hA : MeasurableSet A) (hD : MeasurableSet D) (hAD : A ⊆ D) {q : ℝ}
+    (hq : q ∈ Set.Ioc (0 : ℝ) 1) :
+    distLowerQuantile (law P (layeredIndicatorRV P low high A D hA hD)) q =
+      (Set.Ioc (P.real Dᶜ) 1).indicator (fun _ => low) q +
+        (Set.Ioc (P.real Aᶜ) 1).indicator (fun _ => high - low) q := by
+  haveI : IsProbabilityMeasure (layeredIndicatorLaw P low high A D) := by
+    rw [← law_layeredIndicatorRV_eq_layeredIndicatorLaw (P := P) low high hA hD hAD]
+    infer_instance
+  have hlow_nonneg : 0 ≤ low := le_of_lt hlow
+  have hlowhigh_le : low ≤ high := le_of_lt hlowhigh
+  have hDc_le_Ac : P.real Dᶜ ≤ P.real Aᶜ := by
+    have hmono : P Dᶜ ≤ P Aᶜ := measure_mono (by
+      intro ω hωD
+      intro hωA
+      exact hωD (hAD hωA))
+    exact ENNReal.toReal_mono (measure_ne_top _ _) hmono
+  have hlayered :
+      distLowerQuantile (layeredIndicatorLaw P low high A D) q =
+        (Set.Ioc (P.real Dᶜ) 1).indicator (fun _ => low) q +
+          (Set.Ioc (P.real Aᶜ) 1).indicator (fun _ => high - low) q := by
+    by_cases hqD : q ≤ P.real Dᶜ
+    · have hq_not_mem_D : q ∉ Set.Ioc (P.real Dᶜ) 1 := by
+        simp [Set.mem_Ioc, hqD]
+      have hq_not_mem_A : q ∉ Set.Ioc (P.real Aᶜ) 1 := by
+        simp [Set.mem_Ioc, le_trans hqD hDc_le_Ac]
+      rw [Set.indicator_of_notMem hq_not_mem_D, Set.indicator_of_notMem hq_not_mem_A]
+      apply le_antisymm
+      · apply csInf_le
+        · exact upperLevelSet_bddBelow (layeredIndicatorLaw P low high A D) hq.1
+        · have hcdf0 :
+              ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) 0 = P.real Dᶜ :=
+            cdf_layeredIndicatorLaw_of_nonneg_lt_low (P := P) low high hlow_nonneg hlowhigh_le
+              hA hD hAD (show (0 : ℝ) ≤ 0 by simp) hlow
+          simpa [hcdf0] using hqD
+      · apply le_csInf
+        · refine ⟨0, ?_⟩
+          have hcdf0 :
+              ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) 0 = P.real Dᶜ :=
+            cdf_layeredIndicatorLaw_of_nonneg_lt_low (P := P) low high hlow_nonneg hlowhigh_le
+              hA hD hAD (show (0 : ℝ) ≤ 0 by simp) hlow
+          simpa [hcdf0] using hqD
+        · intro x hx
+          by_contra hx_nonneg
+          have hxlt : x < 0 := by
+            exact lt_of_not_ge (by simpa using hx_nonneg)
+          have hcdfx :
+              ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) x = 0 :=
+            cdf_layeredIndicatorLaw_of_lt_zero (P := P) low high hlow_nonneg hlowhigh_le
+              hA hD hAD hxlt
+          have : q ≤ 0 := by simpa [hcdfx] using hx
+          exact (not_le_of_gt hq.1) this
+    · have hqD' : P.real Dᶜ < q := lt_of_not_ge hqD
+      by_cases hqA : q ≤ P.real Aᶜ
+      · have hq_mem_D : q ∈ Set.Ioc (P.real Dᶜ) 1 := ⟨hqD', hq.2⟩
+        have hq_not_mem_A : q ∉ Set.Ioc (P.real Aᶜ) 1 := by
+          simp [Set.mem_Ioc, hqA]
+        rw [Set.indicator_of_mem hq_mem_D, Set.indicator_of_notMem hq_not_mem_A]
+        apply le_antisymm
+        · apply csInf_le
+          · exact upperLevelSet_bddBelow (layeredIndicatorLaw P low high A D) hq.1
+          · have hcdf_low :
+                ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) low = P.real Aᶜ :=
+              cdf_layeredIndicatorLaw_of_low_le_lt_high (P := P) low high hlow_nonneg hlowhigh_le
+                hA hD hAD le_rfl hlowhigh
+            simpa [hcdf_low] using hqA
+        · apply le_csInf
+          · refine ⟨low, ?_⟩
+            have hcdf_low :
+                ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) low = P.real Aᶜ :=
+              cdf_layeredIndicatorLaw_of_low_le_lt_high (P := P) low high hlow_nonneg hlowhigh_le
+                hA hD hAD le_rfl hlowhigh
+            simpa [hcdf_low] using hqA
+          · intro x hx
+            by_contra hlow_le_x
+            have hxlt_or : x < 0 ∨ 0 ≤ x ∧ x < low := by
+              by_cases hx0 : x < 0
+              · exact Or.inl hx0
+              · have hxltlow : x < low := by
+                  exact lt_of_not_ge (by simpa using hlow_le_x)
+                exact Or.inr ⟨le_of_not_gt hx0, hxltlow⟩
+            cases hxlt_or with
+            | inl hxlt =>
+                have hcdfx :
+                    ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) x = 0 :=
+                  cdf_layeredIndicatorLaw_of_lt_zero (P := P) low high hlow_nonneg hlowhigh_le
+                    hA hD hAD hxlt
+                have : q ≤ 0 := by simpa [hcdfx] using hx
+                exact (not_le_of_gt hq.1) this
+            | inr hxmid =>
+                have hcdfx :
+                    ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) x = P.real Dᶜ :=
+                  cdf_layeredIndicatorLaw_of_nonneg_lt_low (P := P) low high hlow_nonneg
+                    hlowhigh_le hA hD hAD hxmid.1 hxmid.2
+                have : q ≤ P.real Dᶜ := by simpa [hcdfx] using hx
+                linarith
+      · have hqA' : P.real Aᶜ < q := lt_of_not_ge hqA
+        have hq_mem_D : q ∈ Set.Ioc (P.real Dᶜ) 1 := ⟨lt_of_le_of_lt hDc_le_Ac hqA', hq.2⟩
+        have hq_mem_A : q ∈ Set.Ioc (P.real Aᶜ) 1 := ⟨hqA', hq.2⟩
+        rw [Set.indicator_of_mem hq_mem_D, Set.indicator_of_mem hq_mem_A]
+        have hsum : low + (high - low) = high := by ring
+        rw [hsum]
+        apply le_antisymm
+        · apply csInf_le
+          · exact upperLevelSet_bddBelow (layeredIndicatorLaw P low high A D) hq.1
+          · have hcdf_high :
+                ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) high = 1 :=
+              cdf_layeredIndicatorLaw_of_le_high (P := P) low high hlow_nonneg hlowhigh_le
+                hA hD hAD le_rfl
+            have : q ≤ 1 := hq.2
+            simpa [hcdf_high] using this
+        · apply le_csInf
+          · refine ⟨high, ?_⟩
+            have hcdf_high :
+                ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) high = 1 :=
+              cdf_layeredIndicatorLaw_of_le_high (P := P) low high hlow_nonneg hlowhigh_le
+                hA hD hAD le_rfl
+            have : q ≤ 1 := hq.2
+            simpa [hcdf_high] using this
+          · intro x hx
+            by_contra hhigh_le_x
+            have hxlt_or : x < 0 ∨ 0 ≤ x ∧ x < low ∨ low ≤ x ∧ x < high := by
+              by_cases hx0 : x < 0
+              · exact Or.inl hx0
+              · have hx0' : 0 ≤ x := le_of_not_gt hx0
+                by_cases hxl : x < low
+                · exact Or.inr (Or.inl ⟨hx0', hxl⟩)
+                · exact Or.inr (Or.inr ⟨le_of_not_gt hxl, lt_of_not_ge hhigh_le_x⟩)
+            cases hxlt_or with
+            | inl hxlt =>
+                have hcdfx :
+                    ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) x = 0 :=
+                  cdf_layeredIndicatorLaw_of_lt_zero (P := P) low high hlow_nonneg hlowhigh_le
+                    hA hD hAD hxlt
+                have : q ≤ 0 := by simpa [hcdfx] using hx
+                exact (not_le_of_gt hq.1) this
+            | inr hrest =>
+                cases hrest with
+                | inl hxmid =>
+                    have hcdfx :
+                        ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) x = P.real Dᶜ :=
+                      cdf_layeredIndicatorLaw_of_nonneg_lt_low (P := P) low high hlow_nonneg
+                        hlowhigh_le hA hD hAD hxmid.1 hxmid.2
+                    have : q ≤ P.real Dᶜ := by simpa [hcdfx] using hx
+                    linarith [hDc_le_Ac, hqA']
+                | inr hxh =>
+                    have hcdfx :
+                        ProbabilityTheory.cdf (layeredIndicatorLaw P low high A D) x = P.real Aᶜ :=
+                      cdf_layeredIndicatorLaw_of_low_le_lt_high (P := P) low high hlow_nonneg
+                        hlowhigh_le hA hD hAD hxh.1 hxh.2
+                    have : q ≤ P.real Aᶜ := by simpa [hcdfx] using hx
+                    linarith
+  simpa [law_layeredIndicatorRV_eq_layeredIndicatorLaw (P := P) low high hA hD hAD] using hlayered
+
 private theorem cdf_scaledIndicatorLaw_of_lt_zero (c : ℝ) (hc : 0 ≤ c) {A : Set Ω}
     (hA : MeasurableSet A) {x : ℝ} (hx : x < 0) :
     ProbabilityTheory.cdf (scaledIndicatorLaw P c A) x = 0 := by
