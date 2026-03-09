@@ -481,6 +481,90 @@ normalized at level `0`. -/
     AESExt P g 0 = 0 := by
   simpa [AESExt, ESgExt] using (distESgExt_dirac_zero_eq_zero g hg0)
 
+/-- The finite-penalty levels of the cutoff penalty `zeroThenTopPenalty p₀` are exactly
+the levels in `(-∞, p₀]`. -/
+@[simp] theorem mem_FinitePenaltyLevels_zeroThenTopPenalty {p0 p : Level} :
+    p ∈ FinitePenaltyLevels (zeroThenTopPenalty p0) ↔ p ≤ p0 := by
+  unfold FinitePenaltyLevels zeroThenTopPenalty
+  by_cases hp : p ≤ p0
+  · simp [hp]
+  · simp [hp]
+
+/-- The finite-penalty levels of the cutoff penalty `constThenTopPenalty a p₀` are exactly
+the levels in `(-∞, p₀]`. -/
+@[simp] theorem mem_FinitePenaltyLevels_constThenTopPenalty {a : ℝ} {p0 p : Level} :
+    p ∈ FinitePenaltyLevels (constThenTopPenalty a p0) ↔ p ≤ p0 := by
+  unfold FinitePenaltyLevels constThenTopPenalty
+  by_cases hp : p ≤ p0
+  · simp [hp]
+  · simp [hp]
+
+/-- A pure cutoff penalty collapses `AESExt` to the level `p₀`, provided the `ES` profile is
+monotone in the level parameter. -/
+theorem AESExt_zeroThenTopPenalty_eq_ES (X : RandomVariable P) (p0 : Level)
+    (hmono : Monotone (ESProfile P X)) :
+    AESExt P (zeroThenTopPenalty p0) X = ES P p0 X := by
+  unfold AESExt ESgExt distESgExt
+  apply le_antisymm
+  · refine csSup_le ?_ ?_
+    · refine ⟨ES P p0 X, ?_⟩
+      refine ⟨⟨p0, ?_⟩, ?_⟩
+      · exact (mem_FinitePenaltyLevels_zeroThenTopPenalty (p0 := p0)).2 le_rfl
+      · simp [ES, zeroThenTopPenalty]
+    · intro y hy
+      rcases hy with ⟨p, rfl⟩
+      have hp_le : p.1 ≤ p0 :=
+        (mem_FinitePenaltyLevels_zeroThenTopPenalty (p0 := p0) (p := p.1)).1 p.2
+      have hES : ES P p.1 X ≤ ES P p0 X := hmono hp_le
+      have hpen : ENNReal.toReal ((zeroThenTopPenalty p0) p.1) = 0 := by
+        simp [zeroThenTopPenalty, hp_le]
+      simpa [hpen] using hES
+  · refine le_csSup ?_ ?_
+    · refine ⟨ES P p0 X, ?_⟩
+      intro y hy
+      rcases hy with ⟨p, rfl⟩
+      have hp_le : p.1 ≤ p0 :=
+        (mem_FinitePenaltyLevels_zeroThenTopPenalty (p0 := p0) (p := p.1)).1 p.2
+      have hES : ES P p.1 X ≤ ES P p0 X := hmono hp_le
+      have hpen : ENNReal.toReal ((zeroThenTopPenalty p0) p.1) = 0 := by
+        simp [zeroThenTopPenalty, hp_le]
+      simpa [hpen] using hES
+    · exact ⟨⟨p0, by exact (mem_FinitePenaltyLevels_zeroThenTopPenalty (p0 := p0)).2 le_rfl⟩,
+        by simp [ES, zeroThenTopPenalty]⟩
+
+/-- A constant cutoff penalty collapses `AESExt` to `ES_{p₀} - a`, provided the `ES` profile is
+monotone in the level parameter. -/
+theorem AESExt_constThenTopPenalty_eq_ES_sub (X : RandomVariable P) {a : ℝ} (ha : 0 ≤ a)
+    (p0 : Level) (hmono : Monotone (ESProfile P X)) :
+    AESExt P (constThenTopPenalty a p0) X = ES P p0 X - a := by
+  unfold AESExt ESgExt distESgExt
+  apply le_antisymm
+  · refine csSup_le ?_ ?_
+    · exact ⟨ES P p0 X - a,
+        ⟨⟨p0, by exact (mem_FinitePenaltyLevels_constThenTopPenalty (a := a) (p0 := p0)).2 le_rfl⟩,
+          by simp [constThenTopPenalty, ha, ES]⟩⟩
+    · intro y hy
+      rcases hy with ⟨p, rfl⟩
+      have hp_le : p.1 ≤ p0 :=
+        (mem_FinitePenaltyLevels_constThenTopPenalty (a := a) (p0 := p0) (p := p.1)).1 p.2
+      have hES : ES P p.1 X ≤ ES P p0 X := hmono hp_le
+      have hpen : ENNReal.toReal ((constThenTopPenalty a p0) p.1) = a := by
+        simp [constThenTopPenalty, hp_le, ha]
+      simpa [ES, hpen] using sub_le_sub_right hES a
+  · refine le_csSup ?_ ?_
+    · refine ⟨ES P p0 X - a, ?_⟩
+      intro y hy
+      rcases hy with ⟨p, rfl⟩
+      have hp_le : p.1 ≤ p0 :=
+        (mem_FinitePenaltyLevels_constThenTopPenalty (a := a) (p0 := p0) (p := p.1)).1 p.2
+      have hES : ES P p.1 X ≤ ES P p0 X := hmono hp_le
+      have hpen : ENNReal.toReal ((constThenTopPenalty a p0) p.1) = a := by
+        simp [constThenTopPenalty, hp_le, ha]
+      simpa [ES, hpen] using sub_le_sub_right hES a
+    · exact ⟨⟨p0, by
+          exact (mem_FinitePenaltyLevels_constThenTopPenalty (a := a) (p0 := p0)).2 le_rfl⟩,
+        by simp [constThenTopPenalty, ha, ES]⟩
+
 end
 
 end RiskMeasure
