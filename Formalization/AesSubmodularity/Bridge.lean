@@ -1860,6 +1860,61 @@ theorem not_submodular_AES_of_leftLarge_of_isLUB
   exact infiniteLeft_indicatorAES_contradiction_of_submodular_leftLarge_of_isLUB (P := P)
     hsplit g hc hsub hg0 hmono hgnonneg hsup htail hp0q0 hq0p1 hp1 hc_large
 
+/-- Real-valued penalties that become arbitrarily large near `1` cannot generate a submodular AES
+once the zero set has a strict supremum below `1`.
+
+This is the Lean-valid contradiction half of the paper's infinite-left corollary in the current
+`g : Level → ℝ` model. The paper's final collapse to a single `ES_{p₀}` requires an
+extended-valued penalty model, while the present theorem already rules out submodularity for
+genuinely real-valued penalties with an arbitrarily large right tail. -/
+theorem not_submodular_AES_of_forall_eventuallyLarge_of_isLUB
+    (hsplit : HasFullEventSplitting P) (g : Level → ℝ) {p0 : ℝ}
+    (hg0 : g 0 = 0) (hmono : _root_.Monotone g)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hsup : IsLUB (zeroSetReal g) p0) (hp01 : p0 < 1)
+    (htail : ∀ c : ℝ, EventuallyLargeBeforeOne g c) :
+    ¬ Submodular (AES P g) := by
+  have hp0_nonneg : 0 ≤ p0 := by
+    have hzero_mem : (0 : ℝ) ∈ zeroSetReal g := ⟨0, by simp [hg0]⟩
+    exact hsup.1 hzero_mem
+  let q0 : Level := ⟨(p0 + 1) / 2, by
+    constructor
+    · linarith [show -1 ≤ p0 by linarith]
+    · linarith⟩
+  let p1 : Level := ⟨(((q0 : ℝ) + 1) / 2), by
+    constructor
+    · have hq0_nonneg : 0 ≤ (q0 : ℝ) := q0.2.1
+      linarith
+    · have hq01 : (q0 : ℝ) < 1 := by
+        change (p0 + 1) / 2 < 1
+        linarith
+      linarith⟩
+  have hp0q0 : p0 < (q0 : ℝ) := by
+    change p0 < (p0 + 1) / 2
+    linarith
+  have hq01 : (q0 : ℝ) < 1 := by
+    change (p0 + 1) / 2 < 1
+    linarith
+  have hq0p1 : (q0 : ℝ) < (p1 : ℝ) := by
+    change (q0 : ℝ) < (((q0 : ℝ) + 1) / 2)
+    linarith
+  have hp11 : (p1 : ℝ) < 1 := by
+    change (((q0 : ℝ) + 1) / 2) < 1
+    linarith
+  let c : ℝ := g p1 * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) + 1
+  have hc : 0 < c := by
+    have hratio_nonneg : 0 ≤ g p1 * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) := by
+      refine div_nonneg ?_ ?_
+      · exact mul_nonneg (hgnonneg p1) (by linarith)
+      · linarith
+    dsimp [c]
+    linarith
+  have hc_large : g p1 * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) < c := by
+    dsimp [c]
+    linarith
+  exact not_submodular_AES_of_leftLarge_of_isLUB (P := P) hsplit g hc hg0 hmono hgnonneg
+    hsup (htail c) hp0q0 hq0p1 hp11 hc_large
+
 /-- Infinite-left contradiction template with the origin value discharged automatically by
 `g(0) = 0`. -/
 theorem infiniteLeft_indicatorAES_contradiction
