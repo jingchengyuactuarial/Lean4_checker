@@ -2,6 +2,7 @@ import Formalization.RiskMeasure.Quantile
 import Formalization.RiskMeasure.LawInvariant
 import Formalization.RiskMeasure.Linf
 import Formalization.RiskMeasure.Indicators
+import Mathlib.Data.ENNReal.Real
 import Mathlib.MeasureTheory.Function.EssSup
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
 
@@ -49,6 +50,32 @@ def distESProfileContinuous (μ : Measure ℝ) [IsProbabilityMeasure μ] : Prop 
 /-- Penalized expected shortfall at the distribution level. -/
 def distESg (μ : Measure ℝ) [IsProbabilityMeasure μ] (g : Level → ℝ) : ℝ :=
   sSup (Set.range fun p : Level => distES μ p - g p)
+
+/-- Levels whose extended-valued penalty is finite. -/
+def FinitePenaltyLevels (g : Level → ENNReal) : Set Level := {p : Level | g p < ⊤}
+
+/-- Penalized expected shortfall for extended-valued penalties.
+
+Levels carrying infinite penalty are excluded from the supremum. This is the model needed for the
+paper's infinite-left collapse to a single `ES_{p₀}`. -/
+def distESgExt (μ : Measure ℝ) [IsProbabilityMeasure μ] (g : Level → ENNReal) : ℝ :=
+  sSup (Set.range fun p : {p : Level // p ∈ FinitePenaltyLevels g} =>
+    distES μ p.1 - ENNReal.toReal (g p.1))
+
+/-- Adjusted expected shortfall at the distribution level with extended-valued penalties. -/
+abbrev distAESExt (μ : Measure ℝ) [IsProbabilityMeasure μ] (g : Level → ENNReal) : ℝ :=
+  distESgExt μ g
+
+/-- Embed a nonnegative real-valued penalty into the extended nonnegative reals. -/
+def extPenaltyOfReal (g : Level → ℝ) : Level → ENNReal := fun p => ENNReal.ofReal (g p)
+
+/-- Cutoff penalty equal to `0` on `[0,p₀]` and `∞` on `(p₀,1]`. -/
+def zeroThenTopPenalty (p0 : Level) : Level → ENNReal := fun p =>
+  if p ≤ p0 then 0 else ⊤
+
+/-- Cutoff penalty equal to a finite constant `a` on `[0,p₀]` and `∞` on `(p₀,1]`. -/
+def constThenTopPenalty (a : ℝ) (p0 : Level) : Level → ENNReal := fun p =>
+  if p ≤ p0 then ENNReal.ofReal a else ⊤
 
 /-- The OCE objective associated with a loss function `ℓ` and cash level `m`. -/
 def distOCEObjective (μ : Measure ℝ) (ℓ : ℝ → ℝ) (m : ℝ) : ℝ :=
@@ -201,6 +228,42 @@ theorem distESg_dirac_zero_eq_zero (g : Level → ℝ) (hg0 : g 0 = 0)
       linarith
     · exact ⟨(0 : Level), by simp [distES_dirac_zero_eq_zero, hg0]⟩
 
+/-- Real-valued penalties agree with their extended-valued embedding. -/
+theorem distESgExt_extPenaltyOfReal_eq_distESg (μ : Measure ℝ) [IsProbabilityMeasure μ]
+    (g : Level → ℝ) (hgnonneg : ∀ p : Level, 0 ≤ g p) :
+    distESgExt μ (extPenaltyOfReal g) = distESg μ g := by
+  unfold distESgExt distESg FinitePenaltyLevels extPenaltyOfReal
+  congr 1
+  ext y
+  constructor
+  · rintro ⟨p, rfl⟩
+    refine ⟨p.1, ?_⟩
+    simp [hgnonneg p.1]
+  · rintro ⟨p, rfl⟩
+    refine ⟨⟨p, by simp⟩, ?_⟩
+    simp [hgnonneg p]
+
+/-- The extended-valued AES envelope still vanishes on `δ₀` when the penalty is normalized at
+level `0`, provided that `0` carries finite penalty. -/
+theorem distESgExt_dirac_zero_eq_zero (g : Level → ENNReal) (hg0 : g 0 = 0) :
+    distESgExt (Measure.dirac (0 : ℝ)) g = 0 := by
+  unfold distESgExt FinitePenaltyLevels
+  apply le_antisymm
+  · refine csSup_le ?_ ?_
+    · exact ⟨0, ⟨⟨(0 : Level), by simp [hg0]⟩, by simp [distES_dirac_zero_eq_zero, hg0]⟩⟩
+    · intro y hy
+      rcases hy with ⟨p, rfl⟩
+      have hes : distES (Measure.dirac (0 : ℝ)) p.1 = 0 := distES_dirac_zero_eq_zero p.1
+      have hpen : 0 ≤ ENNReal.toReal (g p.1) := ENNReal.toReal_nonneg
+      linarith
+  · refine le_csSup ?_ ?_
+    · refine ⟨0, ?_⟩
+      rintro _ ⟨p, rfl⟩
+      have hes : distES (Measure.dirac (0 : ℝ)) p.1 = 0 := distES_dirac_zero_eq_zero p.1
+      have hpen : 0 ≤ ENNReal.toReal (g p.1) := ENNReal.toReal_nonneg
+      linarith
+    · exact ⟨⟨(0 : Level), by simp [hg0]⟩, by simp [distES_dirac_zero_eq_zero, hg0]⟩
+
 section
 
 variable {Ω : Type*} [MeasurableSpace Ω]
@@ -282,6 +345,10 @@ theorem ESProfile_lawInvariant : LawInvariant P (ESProfile P) :=
 def ESg (g : Level → ℝ) (X : RandomVariable P) : ℝ :=
   distESg (law P X) g
 
+/-- Penalized expected shortfall for extended-valued penalties. -/
+def ESgExt (g : Level → ENNReal) (X : RandomVariable P) : ℝ :=
+  distESgExt (law P X) g
+
 /-- Optimized certainty equivalent for random variables. -/
 def OCE (ℓ : ℝ → ℝ) (X : RandomVariable P) : ℝ :=
   distOCE (law P X) ℓ
@@ -338,8 +405,15 @@ theorem ShortfallRisk_lawInvariant (ℓ : ℝ → ℝ) (r : ℝ) :
 abbrev AES (g : Level → ℝ) (X : RandomVariable P) : ℝ :=
   ESg P g X
 
+/-- Adjusted expected shortfall for extended-valued penalties. -/
+abbrev AESExt (g : Level → ENNReal) (X : RandomVariable P) : ℝ :=
+  ESgExt P g X
+
 /-- Long-form alias for `AES`. -/
 abbrev AdjustedExpectedShortfall := AES P
+
+/-- Long-form alias for `AESExt`. -/
+abbrev ExtendedAdjustedExpectedShortfall := AESExt P
 
 /-- `AES` factors through the law of the underlying random variable. -/
 theorem AES_factorsThroughLaw (g : Level → ℝ) : FactorsThroughLaw P (AES P g) :=
@@ -348,6 +422,41 @@ theorem AES_factorsThroughLaw (g : Level → ℝ) : FactorsThroughLaw P (AES P g
 /-- `AES` is law-invariant. -/
 theorem AES_lawInvariant (g : Level → ℝ) : LawInvariant P (AES P g) :=
   ESg_lawInvariant (P := P) g
+
+/-- `ESgExt` factors through the law of the underlying random variable. -/
+theorem ESgExt_factorsThroughLaw (g : Level → ENNReal) : FactorsThroughLaw P (ESgExt P g) := by
+  refine ⟨fun μ => by
+    let _ : IsProbabilityMeasure μ.1 := μ.2
+    exact distESgExt μ.1 g, ?_⟩
+  intro X
+  rfl
+
+/-- `ESgExt` is law-invariant. -/
+theorem ESgExt_lawInvariant (g : Level → ENNReal) : LawInvariant P (ESgExt P g) :=
+  (ESgExt_factorsThroughLaw (P := P) g).lawInvariant (P := P)
+
+/-- `AESExt` factors through the law of the underlying random variable. -/
+theorem AESExt_factorsThroughLaw (g : Level → ENNReal) : FactorsThroughLaw P (AESExt P g) :=
+  ESgExt_factorsThroughLaw (P := P) g
+
+/-- `AESExt` is law-invariant. -/
+theorem AESExt_lawInvariant (g : Level → ENNReal) : LawInvariant P (AESExt P g) :=
+  ESgExt_lawInvariant (P := P) g
+
+/-- The extended-valued AES envelope agrees with the original real-valued one on nonnegative
+penalties. -/
+theorem ESgExt_extPenaltyOfReal_eq_ESg (g : Level → ℝ) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (X : RandomVariable P) :
+    ESgExt P (extPenaltyOfReal g) X = ESg P g X := by
+  simpa [ESgExt, ESg] using
+    (distESgExt_extPenaltyOfReal_eq_distESg (μ := law P X) g hgnonneg)
+
+/-- The extended-valued AES envelope agrees with the original real-valued one on nonnegative
+penalties. -/
+theorem AESExt_extPenaltyOfReal_eq_AES (g : Level → ℝ) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (X : RandomVariable P) :
+    AESExt P (extPenaltyOfReal g) X = AES P g X := by
+  exact ESgExt_extPenaltyOfReal_eq_ESg (P := P) g hgnonneg X
 
 /-- The law of the zero random variable is the point mass at `0`. -/
 @[simp] theorem law_zero_eq_dirac_zero : law P (0 : RandomVariable P) = Measure.dirac (0 : ℝ) := by
@@ -365,6 +474,12 @@ assumptions used in the AES paper. -/
     (hgnonneg : ∀ p : Level, 0 ≤ g p) :
     AES P g 0 = 0 := by
   simpa [AES, ESg] using (distESg_dirac_zero_eq_zero g hg0 hgnonneg)
+
+/-- Extended-valued adjusted expected shortfall vanishes on the zero position when the penalty is
+normalized at level `0`. -/
+@[simp] theorem AESExt_zero_eq_zero (g : Level → ENNReal) (hg0 : g 0 = 0) :
+    AESExt P g 0 = 0 := by
+  simpa [AESExt, ESgExt] using (distESgExt_dirac_zero_eq_zero g hg0)
 
 end
 
