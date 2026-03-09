@@ -1067,6 +1067,55 @@ theorem ES_finiteConvexX_at_p0
 
 end FiniteConvexXES
 
+section FiniteConvexYES
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+theorem ES_finiteConvexY_at_p2
+    {h M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hba : b < a) (haM : a < M) (hb : 0 < b) :
+    ES P (finiteLevel2 h hh h3) (finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) = 0 := by
+  simpa [finiteConvexY, finiteConvexX, add_assoc, add_left_comm, add_comm] using
+    (ES_finiteConvexX_at_p2 (P := P) (hE0 := hE0) (hE1 := hE2) (hE2 := hE1)
+      (h01 := h02) (h02 := h01) (h12 := h12.symm) (hh := hh) (h3 := h3)
+      (hE0mass := hE0mass) (hE1mass := hE2mass) (hE2mass := hE1mass)
+      (hba := hba) (haM := haM) (hb := hb))
+
+theorem ES_finiteConvexY_at_p1
+    {h M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hba : b < a) (haM : a < M) (hb : 0 < b) :
+    ES P (finiteLevel1 h hh h3) (finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) = -b / 2 := by
+  simpa [finiteConvexY, finiteConvexX, add_assoc, add_left_comm, add_comm] using
+    (ES_finiteConvexX_at_p1 (P := P) (hE0 := hE0) (hE1 := hE2) (hE2 := hE1)
+      (h01 := h02) (h02 := h01) (h12 := h12.symm) (hh := hh) (h3 := h3)
+      (hE0mass := hE0mass) (hE1mass := hE2mass) (hE2mass := hE1mass)
+      (hba := hba) (haM := haM) (hb := hb))
+
+theorem ES_finiteConvexY_at_p0
+    {h M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hba : b < a) (haM : a < M) (hb : 0 < b) :
+    ES P (finiteLevel0 h hh h3) (finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) = -(a + b) / 3 := by
+  simpa [finiteConvexY, finiteConvexX, add_assoc, add_left_comm, add_comm] using
+    (ES_finiteConvexX_at_p0 (P := P) (hE0 := hE0) (hE1 := hE2) (hE2 := hE1)
+      (h01 := h02) (h02 := h01) (h12 := h12.symm) (hh := hh) (h3 := h3)
+      (hE0mass := hE0mass) (hE1mass := hE2mass) (hE2mass := hE1mass)
+      (hba := hba) (haM := haM) (hb := hb))
+
+end FiniteConvexYES
+
 
 section RhoLine
 
