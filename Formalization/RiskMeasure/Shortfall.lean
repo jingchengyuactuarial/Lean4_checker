@@ -565,6 +565,27 @@ theorem AESExt_constThenTopPenalty_eq_ES_sub (X : RandomVariable P) {a : ℝ} (h
           exact (mem_FinitePenaltyLevels_constThenTopPenalty (a := a) (p0 := p0)).2 le_rfl⟩,
         by simp [constThenTopPenalty, ha, ES]⟩
 
+/-- Operator-level glue: once an extended-valued penalty is identified with a pure cutoff, the
+corresponding `AESExt` functional is exactly `ES_{p₀}`. -/
+theorem AESExt_eq_ES_of_eq_zeroThenTopPenalty {g : Level → ENNReal} (p0 : Level)
+    (hg : g = zeroThenTopPenalty p0)
+    (hmono : ∀ X : RandomVariable P, Monotone (ESProfile P X)) :
+    AESExt P g = fun X => ES P p0 X := by
+  subst hg
+  funext X
+  exact AESExt_zeroThenTopPenalty_eq_ES (P := P) X p0 (hmono X)
+
+/-- Operator-level glue: once an extended-valued penalty is identified with a constant cutoff, the
+corresponding `AESExt` functional is exactly `X ↦ ES_{p₀}(X) - a`. -/
+theorem AESExt_eq_ES_sub_of_eq_constThenTopPenalty {g : Level → ENNReal} {a : ℝ} (ha : 0 ≤ a)
+    (p0 : Level)
+    (hg : g = constThenTopPenalty a p0)
+    (hmono : ∀ X : RandomVariable P, Monotone (ESProfile P X)) :
+    AESExt P g = fun X => ES P p0 X - a := by
+  subst hg
+  funext X
+  exact AESExt_constThenTopPenalty_eq_ES_sub (P := P) X ha p0 (hmono X)
+
 end
 
 end RiskMeasure
