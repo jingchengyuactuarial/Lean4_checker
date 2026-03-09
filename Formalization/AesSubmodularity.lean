@@ -1,4 +1,5 @@
 import Formalization.AesSubmodularity.Bridge
+import Formalization.AesSubmodularity.FiniteConvex
 
 namespace AesSubmodularity
 
