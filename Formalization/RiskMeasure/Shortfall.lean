@@ -586,6 +586,57 @@ theorem AESExt_eq_ES_sub_of_eq_constThenTopPenalty {g : Level → ENNReal} {a : 
   funext X
   exact AESExt_constThenTopPenalty_eq_ES_sub (P := P) X ha p0 (hmono X)
 
+/-- A penalty that is constant on `(-∞, p₀]` and infinite on `(p₀,1]` is exactly the canonical
+cutoff penalty `constThenTopPenalty a p₀`. -/
+theorem eq_constThenTopPenalty_of_const_below_top_above {g : Level → ENNReal} {a : ℝ}
+    (p0 : Level)
+    (hconst : ∀ p : Level, p ≤ p0 → g p = ENNReal.ofReal a)
+    (htop : ∀ p : Level, p0 < p → g p = ⊤) :
+    g = constThenTopPenalty a p0 := by
+  funext p
+  by_cases hp : p ≤ p0
+  · rw [hconst p hp]
+    simp [constThenTopPenalty, hp]
+  · have hp' : p0 < p := lt_of_not_ge hp
+    rw [htop p hp']
+    simp [constThenTopPenalty, hp]
+
+/-- Normalized version of `eq_constThenTopPenalty_of_const_below_top_above`. -/
+theorem eq_zeroThenTopPenalty_of_zero_below_top_above {g : Level → ENNReal}
+    (p0 : Level) (hzero : ∀ p : Level, p ≤ p0 → g p = 0)
+    (htop : ∀ p : Level, p0 < p → g p = ⊤) :
+    g = zeroThenTopPenalty p0 := by
+  funext p
+  by_cases hp : p ≤ p0
+  · rw [hzero p hp]
+    simp [zeroThenTopPenalty, hp]
+  · have hp' : p0 < p := lt_of_not_ge hp
+    rw [htop p hp']
+    simp [zeroThenTopPenalty, hp]
+
+/-- Final cutoff-collapse theorem in the shape used by the AES corollary: if the penalty is
+constant on `(-∞, p₀]` and infinite above `p₀`, then the corresponding `AESExt` functional
+reduces to a single expected shortfall level. -/
+theorem AESExt_eq_ES_sub_of_const_below_top_above {g : Level → ENNReal} {a : ℝ} (ha : 0 ≤ a)
+    (p0 : Level) (hconst : ∀ p : Level, p ≤ p0 → g p = ENNReal.ofReal a)
+    (htop : ∀ p : Level, p0 < p → g p = ⊤)
+    (hmono : ∀ X : RandomVariable P, Monotone (ESProfile P X)) :
+    AESExt P g = fun X => ES P p0 X - a := by
+  have hg :
+      g = constThenTopPenalty a p0 :=
+    eq_constThenTopPenalty_of_const_below_top_above (g := g) (a := a) p0 hconst htop
+  exact AESExt_eq_ES_sub_of_eq_constThenTopPenalty (P := P) ha p0 hg hmono
+
+/-- Normalized cutoff-collapse theorem used after shifting the penalty by `g(0)`. -/
+theorem AESExt_eq_ES_of_zero_below_top_above {g : Level → ENNReal}
+    (p0 : Level) (hzero : ∀ p : Level, p ≤ p0 → g p = 0)
+    (htop : ∀ p : Level, p0 < p → g p = ⊤)
+    (hmono : ∀ X : RandomVariable P, Monotone (ESProfile P X)) :
+    AESExt P g = fun X => ES P p0 X := by
+  have hg : g = zeroThenTopPenalty p0 :=
+    eq_zeroThenTopPenalty_of_zero_below_top_above (g := g) p0 hzero htop
+  exact AESExt_eq_ES_of_eq_zeroThenTopPenalty (P := P) p0 hg hmono
+
 end
 
 end RiskMeasure
