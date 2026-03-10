@@ -1937,6 +1937,73 @@ theorem AES_finiteConvexY_le_finiteRhoLine
 
 end FiniteConvexRhoLineUpperBounds
 
+section FiniteConvexLineValues
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+theorem finiteConvexX_minus_line_at_p0
+    {g : Level → ℝ} {h r u M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1) (hu : u = r * h)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hba : b < a) (haM : a < M) (hb : 0 < b) (habu : a + b = 15 * u / 2) :
+    ES P (finiteLevel0 h hh h3) (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2) -
+        finiteSupportLine g h r hh h3 (finiteLevel0 h hh h3) =
+      -(3 * u / 2) - g (finiteLevel1 h hh h3) := by
+  have hES := ES_finiteConvexX_at_p0 (P := P) hE0 hE1 hE2 h01 h02 h12 hh h3
+    hE0mass hE1mass hE2mass hba haM hb
+  rw [hES, finiteSupportLine_apply_p0, hu]
+  linarith
+
+theorem finiteConvexX_minus_line_at_p1
+    {g : Level → ℝ} {h r u M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1) (hu : u = r * h)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hba : b < a) (haM : a < M) (hb : 0 < b) (hbu : b = 3 * u / 2) :
+    ES P (finiteLevel1 h hh h3) (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2) -
+        finiteSupportLine g h r hh h3 (finiteLevel1 h hh h3) =
+      -(3 * u / 4) - g (finiteLevel1 h hh h3) := by
+  have hES := ES_finiteConvexX_at_p1 (P := P) hE0 hE1 hE2 h01 h02 h12 hh h3
+    hE0mass hE1mass hE2mass hba haM hb
+  rw [hES, finiteSupportLine_apply_p1, hbu]
+  ring
+
+theorem finiteConvexX_minus_line_at_p2
+    {g : Level → ℝ} {h r u M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1) (hu : u = r * h)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hba : b < a) (haM : a < M) (hb : 0 < b) :
+    ES P (finiteLevel2 h hh h3) (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2) -
+        finiteSupportLine g h r hh h3 (finiteLevel2 h hh h3) =
+      -u - g (finiteLevel1 h hh h3) := by
+  have hES := ES_finiteConvexX_at_p2 (P := P) hE0 hE1 hE2 h01 h02 h12 hh h3
+    hE0mass hE1mass hE2mass hba haM hb
+  rw [hES, finiteSupportLine_apply_p2, hu]
+  ring
+
+theorem finiteConvexY_minus_line_at_p1
+    {g : Level → ℝ} {h r u M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1) (hu : u = r * h)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hba : b < a) (haM : a < M) (hb : 0 < b) (hbu : b = 3 * u / 2) :
+    ES P (finiteLevel1 h hh h3) (finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) -
+        finiteSupportLine g h r hh h3 (finiteLevel1 h hh h3) =
+      -(3 * u / 4) - g (finiteLevel1 h hh h3) := by
+  have hES := ES_finiteConvexY_at_p1 (P := P) hE0 hE1 hE2 h01 h02 h12 hh h3
+    hE0mass hE1mass hE2mass hba haM hb
+  rw [hES, finiteSupportLine_apply_p1, hbu]
+  ring
+
+end FiniteConvexLineValues
+
 section Contradiction
 
 variable {Ω : Type*} [MeasurableSpace Ω]
