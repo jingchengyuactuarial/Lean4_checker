@@ -199,6 +199,124 @@ def finiteConvexInf (M a : ℝ) (E0 E1 E2 : Set Ω)
       scaledIndicator (-M) E0 ω + scaledIndicator (-a) (E1 ∪ E2) ω :=
   rfl
 
+theorem finiteConvexX_sup_finiteConvexY_eq_finiteConvexSup
+    {M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2) (hba : b ≤ a) :
+    finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 ⊔
+        finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 =
+      finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2) := by
+  ext ω
+  by_cases hω0 : ω ∈ E0
+  · have hω1 : ω ∉ E1 := by
+      intro hω1
+      exact Set.disjoint_left.mp h01 hω0 hω1
+    have hω2 : ω ∉ E2 := by
+      intro hω2
+      exact Set.disjoint_left.mp h02 hω0 hω2
+    change max
+        ((finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω)
+        ((finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) =
+      (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2) : Ω → ℝ) ω
+    simp [finiteConvexX_apply, finiteConvexY_apply, finiteConvexSup_apply,
+      scaledIndicator_eq_indicator_const, hω0, hω1, hω2]
+  · by_cases hω1 : ω ∈ E1
+    · have hω2 : ω ∉ E2 := by
+        intro hω2
+        exact Set.disjoint_left.mp h12 hω1 hω2
+      change max
+          ((finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω)
+          ((finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) =
+        (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2) : Ω → ℝ) ω
+      simp [finiteConvexX_apply, finiteConvexY_apply, finiteConvexSup_apply,
+        scaledIndicator_eq_indicator_const, hω0, hω1, hω2]
+      exact hba
+    · by_cases hω2 : ω ∈ E2
+      · have hω12 : ω ∈ E1 ∪ E2 := Or.inr hω2
+        change max
+            ((finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω)
+            ((finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) =
+          (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2) : Ω → ℝ) ω
+        simp [finiteConvexX_apply, finiteConvexY_apply, finiteConvexSup_apply,
+          scaledIndicator_eq_indicator_const, hω0, hω1, hω2, hω12]
+        exact hba
+      · have hω12 : ω ∉ E1 ∪ E2 := by
+          simp [hω1, hω2]
+        have hX0 :
+            ((finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) = 0 := by
+          simp [finiteConvexX_apply, scaledIndicator_eq_indicator_const, hω0, hω1, hω2]
+        have hY0 :
+            ((finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) = 0 := by
+          simp [finiteConvexY_apply, scaledIndicator_eq_indicator_const, hω0, hω1, hω2]
+        have hSup0 :
+            ((finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2) : Ω → ℝ) ω) = 0 := by
+          simp [finiteConvexSup_apply, scaledIndicator_eq_indicator_const, hω0, hω12]
+        change max
+            ((finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω)
+            ((finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) =
+          (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2) : Ω → ℝ) ω
+        rw [hX0, hY0, hSup0]
+        simp
+
+theorem finiteConvexX_inf_finiteConvexY_eq_finiteConvexInf
+    {M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2) (hba : b ≤ a) :
+    finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 ⊓
+        finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 =
+      finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2) := by
+  ext ω
+  by_cases hω0 : ω ∈ E0
+  · have hω1 : ω ∉ E1 := by
+      intro hω1
+      exact Set.disjoint_left.mp h01 hω0 hω1
+    have hω2 : ω ∉ E2 := by
+      intro hω2
+      exact Set.disjoint_left.mp h02 hω0 hω2
+    change min
+        ((finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω)
+        ((finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) =
+      (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2) : Ω → ℝ) ω
+    simp [finiteConvexX_apply, finiteConvexY_apply, finiteConvexInf_apply,
+      scaledIndicator_eq_indicator_const, hω0, hω1, hω2]
+  · by_cases hω1 : ω ∈ E1
+    · have hω2 : ω ∉ E2 := by
+        intro hω2
+        exact Set.disjoint_left.mp h12 hω1 hω2
+      change min
+          ((finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω)
+          ((finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) =
+        (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2) : Ω → ℝ) ω
+      simp [finiteConvexX_apply, finiteConvexY_apply, finiteConvexInf_apply,
+        scaledIndicator_eq_indicator_const, hω0, hω1, hω2]
+      exact hba
+    · by_cases hω2 : ω ∈ E2
+      · have hω12 : ω ∈ E1 ∪ E2 := Or.inr hω2
+        change min
+            ((finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω)
+            ((finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) =
+          (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2) : Ω → ℝ) ω
+        simp [finiteConvexX_apply, finiteConvexY_apply, finiteConvexInf_apply,
+          scaledIndicator_eq_indicator_const, hω0, hω1, hω2, hω12]
+        exact hba
+      · have hω12 : ω ∉ E1 ∪ E2 := by
+          simp [hω1, hω2]
+        have hX0 :
+            ((finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) = 0 := by
+          simp [finiteConvexX_apply, scaledIndicator_eq_indicator_const, hω0, hω1, hω2]
+        have hY0 :
+            ((finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) = 0 := by
+          simp [finiteConvexY_apply, scaledIndicator_eq_indicator_const, hω0, hω1, hω2]
+        have hInf0 :
+            ((finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2) : Ω → ℝ) ω) = 0 := by
+          simp [finiteConvexInf_apply, scaledIndicator_eq_indicator_const, hω0, hω12]
+        change min
+            ((finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω)
+            ((finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 : Ω → ℝ) ω) =
+          (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2) : Ω → ℝ) ω
+        rw [hX0, hY0, hInf0]
+        simp
+
 theorem law_sum_threeIndicators_eq_finiteThreeIndicatorLaw
     (x0 x1 x2 : ℝ) {E0 E1 E2 : Set Ω}
     (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
@@ -1116,6 +1234,591 @@ theorem ES_finiteConvexY_at_p0
 
 end FiniteConvexYES
 
+section FiniteThreeIndicatorNonpos
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+private theorem distLowerQuantile_le_zero_of_pos_le_one_of_cdf_zero_eq_one
+    (μ : Measure ℝ) [IsProbabilityMeasure μ] {q : ℝ} (hq0 : 0 < q) (hq1 : q ≤ 1)
+    (hcdf : ProbabilityTheory.cdf μ 0 = 1) :
+    distLowerQuantile μ q ≤ 0 := by
+  unfold distLowerQuantile
+  refine csInf_le (upperLevelSet_bddBelow μ hq0) ?_
+  change q ≤ ProbabilityTheory.cdf μ 0
+  rw [hcdf]
+  linarith
+
+end FiniteThreeIndicatorNonpos
+
+section FiniteConvexSupInfES
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+theorem distLowerQuantile_finiteConvexSup_eq_negb
+    {h M b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hbM : b < M) (hb : 0 < b)
+    {q : ℝ} (hq : q ∈ Set.Ioc (1 - 3 * h) (1 - h)) :
+    distLowerQuantile (law P (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2))) q = -b := by
+  let μ := finiteThreeIndicatorLaw P (-M) (-b) (-b) E0 E1 E2
+  have hμ :
+      law P (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2)) = μ := by
+    simpa [μ] using
+      law_finiteConvexSup_eq_finiteThreeIndicatorLaw (P := P) M b hE0 hE1 hE2 h01 h02 h12
+  haveI : IsProbabilityMeasure μ :=
+    finiteThreeIndicatorLaw_isProbabilityMeasure (P := P) (-M) (-b) (-b) hE0 hE1 hE2 h01 h02 h12
+  let S : Set ℝ := {x : ℝ | q ≤ ProbabilityTheory.cdf μ x}
+  have horder01 : -M ≤ -b := by linarith
+  have horder12 : (-b : ℝ) ≤ -b := le_rfl
+  have horder20 : (-b : ℝ) ≤ 0 := by linarith
+  have hsum : P.real E0 + P.real E1 + P.real E2 = 1 - h := by
+    rw [hE0mass, hE1mass, hE2mass]
+    ring
+  suffices hmain : distLowerQuantile μ q = -b by
+    simpa [hμ] using hmain
+  change sInf S = -b
+  apply le_antisymm
+  · refine csInf_le (upperLevelSet_bddBelow μ (by linarith [hh, h3, hq.1])) ?_
+    change q ≤ ProbabilityTheory.cdf μ (-b)
+    have hcdf :
+        ProbabilityTheory.cdf μ (-b) = P.real E0 + P.real E1 + P.real E2 := by
+      exact cdf_finiteThreeIndicatorLaw_of_x2_le_lt_zero (P := P) horder01 horder12 horder20
+        hE0 hE1 hE2 h01 h02 h12 le_rfl (by linarith [hb])
+    rw [hcdf, hsum]
+    linarith [hq.2]
+  · refine le_csInf ?_ ?_
+    · exact ⟨-b, by
+        change q ≤ ProbabilityTheory.cdf μ (-b)
+        have hcdf :
+            ProbabilityTheory.cdf μ (-b) = P.real E0 + P.real E1 + P.real E2 := by
+          exact cdf_finiteThreeIndicatorLaw_of_x2_le_lt_zero (P := P) horder01 horder12 horder20
+            hE0 hE1 hE2 h01 h02 h12 le_rfl (by linarith [hb])
+        rw [hcdf, hsum]
+        linarith [hq.2]⟩
+    · intro x hxS
+      by_contra hxlt
+      have hxlt' : x < -b := by linarith
+      have hxq : q ≤ ProbabilityTheory.cdf μ x := by simpa [S] using hxS
+      by_cases hxltM : x < -M
+      · have hcdf : ProbabilityTheory.cdf μ x = 0 := by
+          exact cdf_finiteThreeIndicatorLaw_of_lt_x0 (P := P) horder01 horder12 horder20
+            hE0 hE1 hE2 h01 h02 h12 hxltM
+        have : q ≤ 0 := by simpa [hcdf] using hxq
+        linarith [hq.1]
+      · have hxgeM : -M ≤ x := le_of_not_gt hxltM
+        have hcdf : ProbabilityTheory.cdf μ x = P.real E0 := by
+          exact cdf_finiteThreeIndicatorLaw_of_x0_le_lt_x1 (P := P) horder12 horder20
+            hE0 hE1 hE2 h01 h02 h12 hxgeM hxlt'
+        have : q ≤ 1 - 3 * h := by simpa [hcdf, hE0mass] using hxq
+        linarith [hq.1]
+
+theorem distLowerQuantile_finiteConvexInf_eq_zero
+    {h M a : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (haM : a < M) (ha : 0 < a)
+    {q : ℝ} (hq : q ∈ Set.Ioc (1 - h) 1) :
+    distLowerQuantile (law P (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2))) q = 0 := by
+  let μ := finiteThreeIndicatorLaw P (-M) (-a) (-a) E0 E1 E2
+  have hμ :
+      law P (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2)) = μ := by
+    simpa [μ] using
+      law_finiteConvexInf_eq_finiteThreeIndicatorLaw (P := P) M a hE0 hE1 hE2 h01 h02 h12
+  haveI : IsProbabilityMeasure μ :=
+    finiteThreeIndicatorLaw_isProbabilityMeasure (P := P) (-M) (-a) (-a) hE0 hE1 hE2 h01 h02 h12
+  let S : Set ℝ := {x : ℝ | q ≤ ProbabilityTheory.cdf μ x}
+  have horder01 : -M ≤ -a := by linarith
+  have horder12 : (-a : ℝ) ≤ -a := le_rfl
+  have horder20 : (-a : ℝ) ≤ 0 := by linarith
+  suffices hmain : distLowerQuantile μ q = 0 by
+    simpa [hμ] using hmain
+  change sInf S = 0
+  apply le_antisymm
+  · refine csInf_le (upperLevelSet_bddBelow μ (by linarith [hh, h3, hq.1])) ?_
+    change q ≤ ProbabilityTheory.cdf μ 0
+    have hcdf : ProbabilityTheory.cdf μ 0 = 1 := by
+      exact cdf_finiteThreeIndicatorLaw_of_nonneg (P := P) horder01 horder12 horder20
+        hE0 hE1 hE2 h01 h02 h12 le_rfl
+    rw [hcdf]
+    linarith [hq.2]
+  · refine le_csInf ?_ ?_
+    · exact ⟨0, by
+        change q ≤ ProbabilityTheory.cdf μ 0
+        have hcdf : ProbabilityTheory.cdf μ 0 = 1 := by
+          exact cdf_finiteThreeIndicatorLaw_of_nonneg (P := P) horder01 horder12 horder20
+            hE0 hE1 hE2 h01 h02 h12 le_rfl
+        rw [hcdf]
+        linarith [hq.2]⟩
+    · intro x hxS
+      by_contra hxlt
+      have hxlt0 : x < 0 := by linarith
+      have hxq : q ≤ ProbabilityTheory.cdf μ x := by simpa [S] using hxS
+      by_cases hxltM : x < -M
+      · have hcdf : ProbabilityTheory.cdf μ x = 0 := by
+          exact cdf_finiteThreeIndicatorLaw_of_lt_x0 (P := P) horder01 horder12 horder20
+            hE0 hE1 hE2 h01 h02 h12 hxltM
+        have : q ≤ 0 := by simpa [hcdf] using hxq
+        linarith [hq.1]
+      · have hxgeM : -M ≤ x := le_of_not_gt hxltM
+        by_cases hxlta : x < -a
+        · have hcdf : ProbabilityTheory.cdf μ x = P.real E0 := by
+            exact cdf_finiteThreeIndicatorLaw_of_x0_le_lt_x1 (P := P) horder12 horder20
+              hE0 hE1 hE2 h01 h02 h12 hxgeM hxlta
+          have : q ≤ 1 - 3 * h := by simpa [hcdf, hE0mass] using hxq
+          linarith [hq.1]
+        · have hxgea : -a ≤ x := le_of_not_gt hxlta
+          have hcdf : ProbabilityTheory.cdf μ x = P.real E0 + P.real E1 + P.real E2 := by
+            exact cdf_finiteThreeIndicatorLaw_of_x2_le_lt_zero (P := P) horder01 horder12 horder20
+              hE0 hE1 hE2 h01 h02 h12 hxgea hxlt0
+          have htmp : q ≤ (1 - 3 * h) + h + h := by
+            simpa [hcdf, hE0mass, hE1mass, hE2mass] using hxq
+          have : q ≤ 1 - h := by linarith
+          linarith [hq.1]
+
+theorem ES_finiteConvexSup_at_p0
+    {h M b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hbM : b < M) (hb : 0 < b) :
+    ES P (finiteLevel0 h hh h3) (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2)) =
+      -(2 * b) / 3 := by
+  let p0 : Level := finiteLevel0 h hh h3
+  let p2 : Level := finiteLevel2 h hh h3
+  let X : RandomVariable P := finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2)
+  have hp0_lt : (p0 : ℝ) < 1 := by simp [p0, hh]
+  have hdist :
+      distES (law P X) p0 = (1 - (p0 : ℝ))⁻¹ * distESIntegral (law P X) p0 := by
+    simpa [distES, hp0_lt]
+  have hp0_le_p2 : (p0 : ℝ) ≤ (p2 : ℝ) := by
+    simp [p0, p2]
+    linarith
+  have hfi02 : IntervalIntegrable (distLowerQuantile (law P X)) volume (p0 : ℝ) (p2 : ℝ) := by
+    refine (intervalIntegrable_const : IntervalIntegrable (fun _ => (-b : ℝ)) volume (p0 : ℝ) (p2 : ℝ)).congr ?_
+    intro q hq
+    have hqIoc : q ∈ Set.Ioc (1 - 3 * h) (1 - h) := by
+      have hq' : q ∈ Set.Ioc (p0 : ℝ) (p2 : ℝ) := by
+        simpa [Set.uIoc, hp0_le_p2] using hq
+      simpa [p0, p2] using hq'
+    symm
+    exact distLowerQuantile_finiteConvexSup_eq_negb (P := P)
+      hE0 hE1 hE2 h01 h02 h12 hh h3 hE0mass hE1mass hE2mass hbM hb hqIoc
+  have hfi23 : IntervalIntegrable (distLowerQuantile (law P X)) volume (p2 : ℝ) 1 := by
+    refine (intervalIntegrable_const : IntervalIntegrable (fun _ => (0 : ℝ)) volume (p2 : ℝ) 1).congr ?_
+    intro q hq
+    have hp2_le : (p2 : ℝ) ≤ 1 := p2.2.2
+    have hqIoc : q ∈ Set.Ioc (1 - h) 1 := by
+      have hq' : q ∈ Set.Ioc (p2 : ℝ) 1 := by
+        simpa [Set.uIoc, hp2_le] using hq
+      simpa [p2] using hq'
+    have hmain :
+        distLowerQuantile (law P X) q = 0 := by
+      exact distLowerQuantile_finiteConvexInf_eq_zero
+        (P := P) (M := M) (a := b)
+        hE0 hE1 hE2 h01 h02 h12 hh h3 hE0mass hE1mass hE2mass hbM hb hqIoc
+    simpa using hmain.symm
+  have hsplit :
+      ∫ x in (p0 : ℝ)..1, distLowerQuantile (law P X) x =
+        (∫ x in (p0 : ℝ)..(p2 : ℝ), distLowerQuantile (law P X) x) +
+          ∫ x in (p2 : ℝ)..1, distLowerQuantile (law P X) x := by
+    simpa using (intervalIntegral.integral_add_adjacent_intervals hfi02 hfi23).symm
+  have h02int :
+      ∫ q in (p0 : ℝ)..(p2 : ℝ), distLowerQuantile (law P X) q = -b * (2 * h) := by
+    calc
+      ∫ q in (p0 : ℝ)..(p2 : ℝ), distLowerQuantile (law P X) q =
+        ∫ q in (p0 : ℝ)..(p2 : ℝ), (-b : ℝ) := by
+          refine intervalIntegral.integral_congr_ae ?_
+          exact Filter.Eventually.of_forall (fun q hq => by
+            have hqIoc : q ∈ Set.Ioc (1 - 3 * h) (1 - h) := by
+              have hq' : q ∈ Set.Ioc (p0 : ℝ) (p2 : ℝ) := by
+                simpa [Set.uIoc, hp0_le_p2] using hq
+              simpa [p0, p2] using hq'
+            exact distLowerQuantile_finiteConvexSup_eq_negb (P := P)
+              hE0 hE1 hE2 h01 h02 h12 hh h3 hE0mass hE1mass hE2mass hbM hb hqIoc)
+      _ = ((p2 : ℝ) - (p0 : ℝ)) * (-b) := by simp [intervalIntegral.integral_const]
+      _ = -b * (2 * h) := by
+        simp [p0, p2]
+        ring
+  have h23int :
+      ∫ q in (p2 : ℝ)..1, distLowerQuantile (law P X) q = 0 := by
+    calc
+      ∫ q in (p2 : ℝ)..1, distLowerQuantile (law P X) q =
+        ∫ q in (p2 : ℝ)..1, (0 : ℝ) := by
+          refine intervalIntegral.integral_congr_ae ?_
+          exact Filter.Eventually.of_forall (fun q hq => by
+            have hp2_le : (p2 : ℝ) ≤ 1 := p2.2.2
+            have hqIoc : q ∈ Set.Ioc (1 - h) 1 := by
+              have hq' : q ∈ Set.Ioc (p2 : ℝ) 1 := by
+                simpa [Set.uIoc, hp2_le] using hq
+              simpa [p2] using hq'
+            simpa using
+              (distLowerQuantile_finiteConvexInf_eq_zero (P := P) (M := M) (a := b)
+                hE0 hE1 hE2 h01 h02 h12 hh h3 hE0mass hE1mass hE2mass hbM hb hqIoc))
+      _ = 0 := by simp
+  calc
+    ES P p0 X = distES (law P X) p0 := rfl
+    _ = (1 - (p0 : ℝ))⁻¹ * distESIntegral (law P X) p0 := hdist
+    _ = (1 - (p0 : ℝ))⁻¹ *
+        ((∫ x in (p0 : ℝ)..(p2 : ℝ), distLowerQuantile (law P X) x) +
+          ∫ x in (p2 : ℝ)..1, distLowerQuantile (law P X) x) := by
+      rw [distESIntegral, hsplit]
+    _ = (1 - (p0 : ℝ))⁻¹ * (-b * (2 * h)) := by rw [h02int, h23int, add_zero]
+    _ = -(2 * b) / 3 := by
+      have hp0_eq : (p0 : ℝ) = 1 - 3 * h := by simp [p0]
+      rw [hp0_eq]
+      field_simp [show h ≠ 0 by linarith]
+      ring
+
+theorem ES_finiteConvexInf_at_p2
+    {h M a : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (haM : a < M) (ha : 0 < a) :
+    ES P (finiteLevel2 h hh h3) (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2)) = 0 := by
+  let p2 : Level := finiteLevel2 h hh h3
+  let X : RandomVariable P := finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2)
+  have hp2_lt : (p2 : ℝ) < 1 := by simp [p2, hh]
+  have hdist :
+      distES (law P X) p2 = (1 - (p2 : ℝ))⁻¹ * distESIntegral (law P X) p2 := by
+    simpa [distES, hp2_lt]
+  have hInt :
+      distESIntegral (law P X) p2 = 0 := by
+    rw [distESIntegral]
+    calc
+      ∫ q in (p2 : ℝ)..1, distLowerQuantile (law P X) q =
+        ∫ q in (p2 : ℝ)..1, (0 : ℝ) := by
+          refine intervalIntegral.integral_congr_ae ?_
+          exact Filter.Eventually.of_forall (fun q hq => by
+            have hp2_le : (p2 : ℝ) ≤ 1 := p2.2.2
+            have hqIoc : q ∈ Set.Ioc (1 - h) 1 := by
+              have hq' : q ∈ Set.Ioc (p2 : ℝ) 1 := by
+                simpa [Set.uIoc, hp2_le] using hq
+              simpa [p2] using hq'
+            exact distLowerQuantile_finiteConvexInf_eq_zero (P := P)
+              hE0 hE1 hE2 h01 h02 h12 hh h3 hE0mass hE1mass hE2mass haM ha hqIoc)
+      _ = 0 := by simp
+  calc
+    ES P p2 X = distES (law P X) p2 := rfl
+    _ = (1 - (p2 : ℝ))⁻¹ * distESIntegral (law P X) p2 := hdist
+    _ = 0 := by rw [hInt]; simp
+
+private theorem distES_le_zero_of_lt_one_of_cdf_zero_eq_one
+    (μ : Measure ℝ) [IsProbabilityMeasure μ] (hcdf0 : ProbabilityTheory.cdf μ 0 = 1)
+    {p : Level} (hp : (p : ℝ) < 1) :
+    distES μ p ≤ 0 := by
+  unfold distES
+  simp [hp]
+  have hInt_nonpos : distESIntegral μ p ≤ 0 := by
+    unfold distESIntegral
+    let f : ℝ → ℝ := fun q => if q = 0 then 0 else distLowerQuantile μ q
+    have hcongr :
+        ∫ q in (p : ℝ)..1, distLowerQuantile μ q =
+          ∫ q in (p : ℝ)..1, f q := by
+      refine intervalIntegral.integral_congr_ae ?_
+      filter_upwards [] with q
+      intro hq
+      have hqIoc : q ∈ Set.Ioc (p : ℝ) 1 := by
+        simpa [Set.uIoc, le_of_lt hp] using hq
+      have hq0 : q ≠ 0 := by linarith [hqIoc.1, p.2.1]
+      simp [f, hq0]
+    have hnonneg : 0 ≤ ∫ q in (p : ℝ)..1, -(f q) := by
+      refine intervalIntegral.integral_nonneg (le_of_lt hp) ?_
+      intro q hq
+      by_cases hq0 : q = 0
+      · simp [f, hq0]
+      · have hqge0 : 0 ≤ q := le_trans p.2.1 hq.1
+        have hq0' : (0 : ℝ) ≠ q := by exact fun h0q => hq0 h0q.symm
+        have hqpos : 0 < q := lt_of_le_of_ne hqge0 hq0'
+        have hqle1 : q ≤ 1 := hq.2
+        have hqle : distLowerQuantile μ q ≤ 0 :=
+          distLowerQuantile_le_zero_of_pos_le_one_of_cdf_zero_eq_one μ hqpos hqle1 hcdf0
+        simpa [f, hq0] using neg_nonneg.mpr hqle
+    have hneg_eq :
+        ∫ q in (p : ℝ)..1, -(f q) = -(∫ q in (p : ℝ)..1, f q) := by
+      simp
+    have hmainf : ∫ q in (p : ℝ)..1, f q ≤ 0 := by
+      linarith [hnonneg, hneg_eq]
+    have hmain : ∫ q in (p : ℝ)..1, distLowerQuantile μ q ≤ 0 := by
+      rw [hcongr]
+      exact hmainf
+    simpa using hmain
+  have hfac_nonneg : 0 ≤ (1 - (p : ℝ))⁻¹ := by
+    refine inv_nonneg.mpr ?_
+    linarith
+  exact mul_nonpos_of_nonneg_of_nonpos hfac_nonneg hInt_nonpos
+
+private theorem ES_finiteConvexX_le_zero_of_lt_one
+    {M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (haM : a < M) (ha : 0 < a) (hb : 0 < b) (hba : b ≤ a) {p : Level} (hp : (p : ℝ) < 1) :
+    ES P p (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2) ≤ 0 := by
+  let μ := finiteThreeIndicatorLaw P (-M) (-a) (-b) E0 E1 E2
+  have hμ :
+      law P (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2) = μ := by
+    simpa [μ] using
+      law_finiteConvexX_eq_finiteThreeIndicatorLaw (P := P) M a b hE0 hE1 hE2 h01 h02 h12
+  haveI : IsProbabilityMeasure μ :=
+    finiteThreeIndicatorLaw_isProbabilityMeasure (P := P) (-M) (-a) (-b) hE0 hE1 hE2 h01 h02 h12
+  have hcdf0 : ProbabilityTheory.cdf μ 0 = 1 := by
+    exact cdf_finiteThreeIndicatorLaw_of_nonneg (P := P)
+      (by linarith : (-M : ℝ) ≤ -a) (by linarith : (-a : ℝ) ≤ -b) (by linarith : (-b : ℝ) ≤ 0)
+      hE0 hE1 hE2 h01 h02 h12 le_rfl
+  have hmain : distES μ p ≤ 0 := distES_le_zero_of_lt_one_of_cdf_zero_eq_one μ hcdf0 hp
+  simpa [ES, hμ] using hmain
+
+private theorem ES_finiteConvexY_le_zero_of_lt_one
+    {M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (haM : a < M) (ha : 0 < a) (hb : 0 < b) (hba : b ≤ a) {p : Level} (hp : (p : ℝ) < 1) :
+    ES P p (finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) ≤ 0 := by
+  let Y' : RandomVariable P := finiteConvexX P M a b E0 E2 E1 hE0 hE2 hE1
+  have hYeq : finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2 = Y' := by
+    ext ω
+    simp [Y', finiteConvexX_apply, finiteConvexY_apply, add_assoc, add_left_comm, add_comm]
+  let μ := finiteThreeIndicatorLaw P (-M) (-a) (-b) E0 E2 E1
+  have hμ : law P Y' = μ := by
+    simpa [Y', μ] using
+      law_finiteConvexX_eq_finiteThreeIndicatorLaw (P := P) M a b
+        (hE0 := hE0) (hE1 := hE2) (hE2 := hE1) h02 h01 h12.symm
+  haveI : IsProbabilityMeasure μ :=
+    finiteThreeIndicatorLaw_isProbabilityMeasure (P := P) (-M) (-a) (-b) hE0 hE2 hE1 h02 h01
+      h12.symm
+  have hcdf0 : ProbabilityTheory.cdf μ 0 = 1 := by
+    exact cdf_finiteThreeIndicatorLaw_of_nonneg (P := P)
+      (by linarith : (-M : ℝ) ≤ -a) (by linarith : (-a : ℝ) ≤ -b) (by linarith : (-b : ℝ) ≤ 0)
+      hE0 hE2 hE1 h02 h01 h12.symm le_rfl
+  have hmain : distES μ p ≤ 0 := distES_le_zero_of_lt_one_of_cdf_zero_eq_one μ hcdf0 hp
+  simpa [hYeq, ES, hμ] using hmain
+
+private theorem ES_finiteConvexSup_le_zero_of_lt_one
+    {M b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hbM : b < M) (hb : 0 < b) {p : Level} (hp : (p : ℝ) < 1) :
+    ES P p (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2)) ≤ 0 := by
+  let μ := finiteThreeIndicatorLaw P (-M) (-b) (-b) E0 E1 E2
+  have hμ :
+      law P (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2)) = μ := by
+    simpa [μ] using
+      law_finiteConvexSup_eq_finiteThreeIndicatorLaw (P := P) M b hE0 hE1 hE2 h01 h02 h12
+  haveI : IsProbabilityMeasure μ :=
+    finiteThreeIndicatorLaw_isProbabilityMeasure (P := P) (-M) (-b) (-b) hE0 hE1 hE2 h01 h02 h12
+  have hcdf0 : ProbabilityTheory.cdf μ 0 = 1 := by
+    exact cdf_finiteThreeIndicatorLaw_of_nonneg (P := P)
+      (by linarith : (-M : ℝ) ≤ -b) le_rfl (by linarith : (-b : ℝ) ≤ 0)
+      hE0 hE1 hE2 h01 h02 h12 le_rfl
+  have hInt_nonpos : distESIntegral μ p ≤ 0 := by
+    unfold distESIntegral
+    let f : ℝ → ℝ := fun q => if q = 0 then 0 else distLowerQuantile μ q
+    have hcongr :
+        ∫ q in (p : ℝ)..1, distLowerQuantile μ q =
+          ∫ q in (p : ℝ)..1, f q := by
+      refine intervalIntegral.integral_congr_ae ?_
+      filter_upwards [] with q
+      intro hq
+      have hqIoc : q ∈ Set.Ioc (p : ℝ) 1 := by
+        simpa [Set.uIoc, le_of_lt hp] using hq
+      have hq0 : q ≠ 0 := by linarith [hqIoc.1, p.2.1]
+      simp [f, hq0]
+    have hnonneg : 0 ≤ ∫ q in (p : ℝ)..1, -(f q) := by
+      refine intervalIntegral.integral_nonneg (le_of_lt hp) ?_
+      intro q hq
+      by_cases hq0 : q = 0
+      · simp [f, hq0]
+      · have hqge0 : 0 ≤ q := le_trans p.2.1 hq.1
+        have hq0' : (0 : ℝ) ≠ q := by exact fun h0q => hq0 h0q.symm
+        have hqpos : 0 < q := lt_of_le_of_ne hqge0 hq0'
+        have hqle1 : q ≤ 1 := hq.2
+        have hqle : distLowerQuantile μ q ≤ 0 :=
+          distLowerQuantile_le_zero_of_pos_le_one_of_cdf_zero_eq_one μ hqpos hqle1 hcdf0
+        simpa [f, hq0] using neg_nonneg.mpr hqle
+    have hneg_eq :
+        ∫ q in (p : ℝ)..1, -(f q) = -(∫ q in (p : ℝ)..1, f q) := by
+      simp
+    have hmainf : ∫ q in (p : ℝ)..1, f q ≤ 0 := by
+      linarith [hnonneg, hneg_eq]
+    have hmain : ∫ q in (p : ℝ)..1, distLowerQuantile μ q ≤ 0 := by
+      rw [hcongr]
+      exact hmainf
+    simpa using hmain
+  have hmain : distES μ p ≤ 0 := by
+    simp [distES, hp]
+    have hfac_nonneg : 0 ≤ (1 - (p : ℝ))⁻¹ := by
+      refine inv_nonneg.mpr ?_
+      linarith
+    exact mul_nonpos_of_nonneg_of_nonpos hfac_nonneg hInt_nonpos
+  simpa [ES, hμ] using hmain
+
+private theorem ES_finiteConvexInf_le_zero_of_lt_one
+    {M a : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (haM : a < M) (ha : 0 < a) {p : Level} (hp : (p : ℝ) < 1) :
+    ES P p (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2)) ≤ 0 := by
+  let μ := finiteThreeIndicatorLaw P (-M) (-a) (-a) E0 E1 E2
+  have hμ :
+      law P (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2)) = μ := by
+    simpa [μ] using
+      law_finiteConvexInf_eq_finiteThreeIndicatorLaw (P := P) M a hE0 hE1 hE2 h01 h02 h12
+  haveI : IsProbabilityMeasure μ :=
+    finiteThreeIndicatorLaw_isProbabilityMeasure (P := P) (-M) (-a) (-a) hE0 hE1 hE2 h01 h02 h12
+  have hcdf0 : ProbabilityTheory.cdf μ 0 = 1 := by
+    exact cdf_finiteThreeIndicatorLaw_of_nonneg (P := P)
+      (by linarith : (-M : ℝ) ≤ -a) le_rfl (by linarith : (-a : ℝ) ≤ 0)
+      hE0 hE1 hE2 h01 h02 h12 le_rfl
+  have hInt_nonpos : distESIntegral μ p ≤ 0 := by
+    unfold distESIntegral
+    let f : ℝ → ℝ := fun q => if q = 0 then 0 else distLowerQuantile μ q
+    have hcongr :
+        ∫ q in (p : ℝ)..1, distLowerQuantile μ q =
+          ∫ q in (p : ℝ)..1, f q := by
+      refine intervalIntegral.integral_congr_ae ?_
+      filter_upwards [] with q
+      intro hq
+      have hqIoc : q ∈ Set.Ioc (p : ℝ) 1 := by
+        simpa [Set.uIoc, le_of_lt hp] using hq
+      have hq0 : q ≠ 0 := by linarith [hqIoc.1, p.2.1]
+      simp [f, hq0]
+    have hnonneg : 0 ≤ ∫ q in (p : ℝ)..1, -(f q) := by
+      refine intervalIntegral.integral_nonneg (le_of_lt hp) ?_
+      intro q hq
+      by_cases hq0 : q = 0
+      · simp [f, hq0]
+      · have hqge0 : 0 ≤ q := le_trans p.2.1 hq.1
+        have hq0' : (0 : ℝ) ≠ q := by exact fun h0q => hq0 h0q.symm
+        have hqpos : 0 < q := lt_of_le_of_ne hqge0 hq0'
+        have hqle1 : q ≤ 1 := hq.2
+        have hqle : distLowerQuantile μ q ≤ 0 :=
+          distLowerQuantile_le_zero_of_pos_le_one_of_cdf_zero_eq_one μ hqpos hqle1 hcdf0
+        simpa [f, hq0] using neg_nonneg.mpr hqle
+    have hneg_eq :
+        ∫ q in (p : ℝ)..1, -(f q) = -(∫ q in (p : ℝ)..1, f q) := by
+      simp
+    have hmainf : ∫ q in (p : ℝ)..1, f q ≤ 0 := by
+      linarith [hnonneg, hneg_eq]
+    have hmain : ∫ q in (p : ℝ)..1, distLowerQuantile μ q ≤ 0 := by
+      rw [hcongr]
+      exact hmainf
+    simpa using hmain
+  have hmain : distES μ p ≤ 0 := by
+    simp [distES, hp]
+    have hfac_nonneg : 0 ≤ (1 - (p : ℝ))⁻¹ := by
+      refine inv_nonneg.mpr ?_
+      linarith
+    exact mul_nonpos_of_nonneg_of_nonpos hfac_nonneg hInt_nonpos
+  simpa [ES, hμ] using hmain
+
+end FiniteConvexSupInfES
+
+section FiniteConvexAESLowerBounds
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+/-- A concrete level always provides a lower bound for `AES`, once the penalty is nonnegative and
+all strictly subunit levels have nonpositive `ES`. -/
+private theorem AES_ge_of_level_witness_of_nonpos_lt_one
+    {g : Level → ℝ} (Z : RandomVariable P) (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hES_nonpos_lt1 : ∀ p : Level, (p : ℝ) < 1 → ES P p Z ≤ 0) (p0 : Level) :
+    ES P p0 Z - g p0 ≤ AES P g Z := by
+  unfold AES ESg distESg
+  refine le_csSup ?_ ?_
+  · refine ⟨max 0 (ES P 1 Z), ?_⟩
+    intro y hy
+    rcases hy with ⟨p, rfl⟩
+    by_cases hp : (p : ℝ) < 1
+    · have hES : ES P p Z ≤ 0 := hES_nonpos_lt1 p hp
+      have hg := hgnonneg p
+      have hES' : distES (law P Z) p ≤ 0 := by simpa [ES] using hES
+      calc
+        distES (law P Z) p - g p ≤ 0 := by linarith
+        _ ≤ max 0 (ES P 1 Z) := le_max_left _ _
+    · have hp1 : p = 1 := by
+        apply Subtype.ext
+        have hpge : (1 : ℝ) ≤ p := by linarith
+        exact le_antisymm p.2.2 hpge
+      subst hp1
+      have hg := hgnonneg (1 : Level)
+      calc
+        distES (law P Z) (1 : Level) - g (1 : Level) ≤ distES (law P Z) (1 : Level) := by
+          linarith
+        _ = ES P 1 Z := rfl
+        _ ≤ max 0 (ES P 1 Z) := le_max_right _ _
+  · exact ⟨p0, rfl⟩
+
+/-- The `X ⊔ Y` witness from the finite convex lemma gives the required lower bound at `p₀`. -/
+theorem AES_finiteConvexSup_ge_p0
+    {g : Level → ℝ} {h u M b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hbM : b < M) (hb : 0 < b) (hbu : b = 3 * u / 2)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p) :
+    -u - g (finiteLevel0 h hh h3) ≤
+      AES P g (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2)) := by
+  let Z : RandomVariable P := finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2)
+  let p0 : Level := finiteLevel0 h hh h3
+  have hAES :
+      ES P p0 Z - g p0 ≤ AES P g Z :=
+    AES_ge_of_level_witness_of_nonpos_lt_one (P := P) Z hgnonneg
+      (fun p hp =>
+        ES_finiteConvexSup_le_zero_of_lt_one (P := P) hE0 hE1 hE2 h01 h02 h12 hbM hb hp) p0
+  have hES :
+      ES P p0 Z = -(2 * b) / 3 := by
+    simpa [Z, p0] using
+      (ES_finiteConvexSup_at_p0 (P := P) hE0 hE1 hE2 h01 h02 h12 hh h3
+        hE0mass hE1mass hE2mass hbM hb)
+  calc
+    -u - g (finiteLevel0 h hh h3) = ES P p0 Z - g p0 := by
+      rw [hES, hbu]
+      ring
+    _ ≤ AES P g Z := hAES
+    _ = AES P g (finiteConvexSup P M b E0 E1 E2 hE0 (hE1.union hE2)) := rfl
+
+/-- The `X ⊓ Y` witness from the finite convex lemma gives the required lower bound at `p₂`. -/
+theorem AES_finiteConvexInf_ge_p2
+    {g : Level → ℝ} {h M a : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (haM : a < M) (ha : 0 < a) (hgnonneg : ∀ p : Level, 0 ≤ g p) :
+    -g (finiteLevel2 h hh h3) ≤
+      AES P g (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2)) := by
+  let Z : RandomVariable P := finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2)
+  let p2 : Level := finiteLevel2 h hh h3
+  have hAES :
+      ES P p2 Z - g p2 ≤ AES P g Z :=
+    AES_ge_of_level_witness_of_nonpos_lt_one (P := P) Z hgnonneg
+      (fun p hp =>
+        ES_finiteConvexInf_le_zero_of_lt_one (P := P) hE0 hE1 hE2 h01 h02 h12 haM ha hp) p2
+  have hES : ES P p2 Z = 0 := by
+    simpa [Z, p2] using
+      (ES_finiteConvexInf_at_p2 (P := P) hE0 hE1 hE2 h01 h02 h12 hh h3
+        hE0mass hE1mass hE2mass haM ha)
+  calc
+    -g (finiteLevel2 h hh h3) = ES P p2 Z - g p2 := by
+      change -g p2 = ES P p2 Z - g p2
+      rw [hES]
+      ring
+    _ ≤ AES P g Z := hAES
+    _ = AES P g (finiteConvexInf P M a E0 E1 E2 hE0 (hE1.union hE2)) := rfl
+
+end FiniteConvexAESLowerBounds
+
 
 section RhoLine
 
@@ -1128,6 +1831,111 @@ def finiteRhoLine (g : Level → ℝ) (h r : ℝ) (hh : 0 < h) (h3 : 3 * h < 1)
   sSup (Set.range fun p : Level => ES P p Z - finiteSupportLine g h r hh h3 p)
 
 end RhoLine
+
+section FiniteConvexRhoLineUpperBounds
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+/-- The affine support line is increasing on `[0,1]` when its slope is nonnegative. -/
+private theorem finiteSupportLine_zero_le
+    {g : Level → ℝ} {h r : ℝ} (hh : 0 < h) (h3 : 3 * h < 1) (hr : 0 ≤ r) (p : Level) :
+    finiteSupportLine g h r hh h3 0 ≤ finiteSupportLine g h r hh h3 p := by
+  have hdiff :
+      finiteSupportLine g h r hh h3 p - finiteSupportLine g h r hh h3 0 = r * (p : ℝ) := by
+    simp [finiteSupportLine]
+    ring_nf
+  have hp0 : 0 ≤ (p : ℝ) := p.2.1
+  nlinarith [hdiff]
+
+/-- If all ES levels are nonpositive and the affine support line lies below `g`, then the AES
+envelope is bounded above by the affine-line envelope `ρ_ℓ`. -/
+private theorem AES_le_finiteRhoLine_of_ES_nonpos_lt1
+    {g : Level → ℝ} {h r : ℝ} (hh : 0 < h) (h3 : 3 * h < 1) (hr : 0 ≤ r)
+    (Z : RandomVariable P)
+    (hline : ∀ p : Level, finiteSupportLine g h r hh h3 p ≤ g p)
+    (hES_nonpos_lt1 : ∀ p : Level, (p : ℝ) < 1 → ES P p Z ≤ 0) :
+    AES P g Z ≤ finiteRhoLine P g h r hh h3 Z := by
+  let B : Set ℝ := Set.range fun p : Level => ES P p Z - finiteSupportLine g h r hh h3 p
+  let C : ℝ := max 0 (ES P 1 Z) - finiteSupportLine g h r hh h3 0
+  have hBdd : BddAbove B := by
+    refine ⟨C, ?_⟩
+    intro y hy
+    rcases hy with ⟨p, rfl⟩
+    have hmono : finiteSupportLine g h r hh h3 0 ≤ finiteSupportLine g h r hh h3 p :=
+      finiteSupportLine_zero_le hh h3 hr p
+    by_cases hp : (p : ℝ) < 1
+    · have hES : ES P p Z ≤ 0 := hES_nonpos_lt1 p hp
+      have h1 :
+          ES P p Z - finiteSupportLine g h r hh h3 p ≤ 0 - finiteSupportLine g h r hh h3 p := by
+        linarith
+      have h2 :
+          0 - finiteSupportLine g h r hh h3 p ≤ 0 - finiteSupportLine g h r hh h3 0 := by
+        linarith
+      have h3' : 0 - finiteSupportLine g h r hh h3 0 ≤ C := by
+        unfold C
+        exact sub_le_sub_right (le_max_left 0 (ES P 1 Z)) _
+      exact le_trans h1 (le_trans h2 h3')
+    · have hp1 : p = 1 := by
+        apply Subtype.ext
+        have hpge : (1 : ℝ) ≤ p := by linarith
+        exact le_antisymm p.2.2 hpge
+      subst hp1
+      have h1 :
+          ES P (1 : Level) Z - finiteSupportLine g h r hh h3 1 ≤
+            max 0 (ES P 1 Z) - finiteSupportLine g h r hh h3 1 := by
+        exact sub_le_sub_right (le_max_right 0 (ES P 1 Z)) _
+      have h2 :
+          max 0 (ES P 1 Z) - finiteSupportLine g h r hh h3 1 ≤ C := by
+        unfold C
+        linarith
+      exact le_trans h1 h2
+  unfold AES ESg distESg finiteRhoLine
+  refine csSup_le ?_ ?_
+  · exact Set.range_nonempty _
+  · intro y hy
+    rcases hy with ⟨p, rfl⟩
+    have hlinep : finiteSupportLine g h r hh h3 p ≤ g p := hline p
+    have hterm :
+        ES P p Z - g p ≤ ES P p Z - finiteSupportLine g h r hh h3 p := by
+      linarith
+    have hsSup :
+        ES P p Z - finiteSupportLine g h r hh h3 p ≤
+          sSup (Set.range fun q : Level => ES P q Z - finiteSupportLine g h r hh h3 q) :=
+      le_csSup hBdd ⟨p, rfl⟩
+    exact le_trans hterm hsSup
+
+theorem AES_finiteConvexX_le_finiteRhoLine
+    {g : Level → ℝ} {h r M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1) (hr : 0 ≤ r)
+    (haM : a < M) (ha : 0 < a) (hb : 0 < b) (hba : b ≤ a)
+    (hline : ∀ p : Level, finiteSupportLine g h r hh h3 p ≤ g p) :
+    AES P g (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2) ≤
+      finiteRhoLine P g h r hh h3 (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2) := by
+  refine
+    AES_le_finiteRhoLine_of_ES_nonpos_lt1 (P := P) hh h3 hr
+      (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2) hline ?_
+  intro p hp
+  exact ES_finiteConvexX_le_zero_of_lt_one (P := P) hE0 hE1 hE2 h01 h02 h12 haM ha hb hba hp
+
+theorem AES_finiteConvexY_le_finiteRhoLine
+    {g : Level → ℝ} {h r M a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1) (hr : 0 ≤ r)
+    (haM : a < M) (ha : 0 < a) (hb : 0 < b) (hba : b ≤ a)
+    (hline : ∀ p : Level, finiteSupportLine g h r hh h3 p ≤ g p) :
+    AES P g (finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) ≤
+      finiteRhoLine P g h r hh h3 (finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) := by
+  refine
+    AES_le_finiteRhoLine_of_ES_nonpos_lt1 (P := P) hh h3 hr
+      (finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) hline ?_
+  intro p hp
+  exact ES_finiteConvexY_le_zero_of_lt_one (P := P) hE0 hE1 hE2 h01 h02 h12 haM ha hb hba hp
+
+end FiniteConvexRhoLineUpperBounds
 
 section Contradiction
 
@@ -1197,6 +2005,46 @@ theorem not_submodular_AES_of_finiteConvex_bounds
   exact not_submodular_of_bounds (P := P)
     (ρ := AES P g)
     (X := X) (Y := Y) hX' hY' hInf' hSup' hgap
+
+/-- A stronger finite-convex contradiction theorem: the lower bounds for `X ⊔ Y` and `X ⊓ Y`
+are proved internally from the explicit `ES` formulas, so only the `X,Y` upper bounds remain as
+external inputs. -/
+theorem not_submodular_AES_of_finiteConvex_XYbounds
+    {g : Level → ℝ} {h r u a b M : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1) (hu : u = r * h) (hbu : b = 3 * u / 2)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (haM : a < M) (hbM : b < M) (ha : 0 < a) (hb : 0 < b) (hba : b ≤ a)
+    (hgnonneg : ∀ p : Level, 0 ≤ g p)
+    (hX :
+      AES P g (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2) ≤
+        -(3 * u / 4) - g (finiteLevel1 h hh h3))
+    (hY :
+      AES P g (finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) ≤
+        -(3 * u / 4) - g (finiteLevel1 h hh h3))
+    (hsmall :
+      g (finiteLevel0 h hh h3) + g (finiteLevel2 h hh h3) -
+        2 * g (finiteLevel1 h hh h3) < r * h / 2) :
+    ¬ Submodular (AES P g) := by
+  have hSup :
+      -u - g (finiteLevel0 h hh h3) ≤
+        AES P g
+          (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 ⊔
+            finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) := by
+    rw [finiteConvexX_sup_finiteConvexY_eq_finiteConvexSup (P := P) hE0 hE1 hE2 h01 h02 h12 hba]
+    exact AES_finiteConvexSup_ge_p0 (P := P) (g := g) hE0 hE1 hE2 h01 h02 h12 hh h3
+      hE0mass hE1mass hE2mass hbM hb hbu hgnonneg
+  have hInf :
+      -g (finiteLevel2 h hh h3) ≤
+        AES P g
+          (finiteConvexX P M a b E0 E1 E2 hE0 hE1 hE2 ⊓
+            finiteConvexY P M a b E0 E1 E2 hE0 hE1 hE2) := by
+    rw [finiteConvexX_inf_finiteConvexY_eq_finiteConvexInf (P := P) hE0 hE1 hE2 h01 h02 h12 hba]
+    exact AES_finiteConvexInf_ge_p2 (P := P) (g := g) hE0 hE1 hE2 h01 h02 h12 hh h3
+      hE0mass hE1mass hE2mass haM ha hgnonneg
+  exact not_submodular_AES_of_finiteConvex_bounds (P := P) hE0 hE1 hE2 hh h3 hu hX hY hSup hInf
+    hsmall
 
 end Contradiction
 
