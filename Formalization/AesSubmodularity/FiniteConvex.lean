@@ -393,6 +393,82 @@ theorem exists_discrete_front_half_data_of_convex_pos_before_one
   · have hsum : p1 + (p2 - p1) + (1 - p2) = 1 := by ring
     simpa [hsum] using halarge
 
+section Probability
+
+variable {Ω : Type*} [MeasurableSpace Ω]
+variable (P : Measure Ω) [IsProbabilityMeasure P]
+
+/-- The discrete front-half data can be realized together with three pairwise disjoint measurable
+events of masses `p₁`, `p₂ - p₁`, and `1 - p₂` on any atomless probability space with exact event
+splitting. This packages the front half of the finite-convex argument in a form that can later be
+fed directly into a constructive contradiction theorem. -/
+theorem exists_discrete_front_half_event_data_of_convex_pos_before_one
+    (hsplit : HasFullEventSplitting P) {f : ℝ → ℝ} (hmono : _root_.Monotone f)
+    (hconv : ConvexOn ℝ (Set.Icc (0 : ℝ) 1) f) (h0 : f 0 = 0)
+    (hq : ∃ q : ℝ, q < 1 ∧ 0 < f q) :
+    ∃ p1 p2 s b a : ℝ, ∃ E1 E2 E3 : Set Ω,
+      p1 ∈ Set.Ioo (0 : ℝ) 1 ∧
+      p2 ∈ Set.Ioo p1 1 ∧
+      MeasurableSet E1 ∧
+      MeasurableSet E2 ∧
+      MeasurableSet E3 ∧
+      Disjoint E1 E2 ∧
+      Disjoint E1 E3 ∧
+      Disjoint E2 E3 ∧
+      P.real E1 = p1 ∧
+      P.real E2 = p2 - p1 ∧
+      P.real E3 = 1 - p2 ∧
+      s = derivWithin f (Set.Iio p1) p1 ∧
+      0 < s ∧
+      0 < b ∧
+      b < s * (1 - p1) ∧
+      0 < f p1 - (f p2 - f p1) + b * (2 * (p2 - p1) / (1 - p1) - p2) ∧
+      0 < a ∧
+      s + (p2 - p1) * b / (1 - p1) < a ∧
+      (∀ x ∈ Set.Icc (0 : ℝ) 1, f p1 + s * (x - p1) ≤ f x) := by
+  obtain ⟨p1, p2, s, b, a, hp1, hp2, hs, hspos, hbpos, hbsmall, hAplus, hapos, halarge,
+    hline⟩ :=
+    exists_discrete_front_half_data_of_convex_pos_before_one hmono hconv h0 hq
+  obtain ⟨E1, hE1, hE1real⟩ :=
+    exists_measurableSet_measureReal_eq (P := P) hsplit (show 0 ≤ p1 by linarith [hp1.1])
+      (show p1 ≤ 1 by linarith [hp1.2])
+  have hp21_nonneg : 0 ≤ p2 - p1 := by linarith [hp2.1]
+  have hp21_le_compl : p2 - p1 ≤ P.real (E1ᶜ : Set Ω) := by
+    rw [probReal_compl_eq_one_sub (μ := P) hE1, hE1real]
+    linarith [hp2.2]
+  obtain ⟨E2, hE2sub, hE2, hE2real⟩ :=
+    exists_subset_measurableSet_measureReal_eq (P := P) hsplit hE1.compl hp21_nonneg hp21_le_compl
+  let E3 : Set Ω := (E1 ∪ E2)ᶜ
+  have hE3 : MeasurableSet E3 := (hE1.union hE2).compl
+  have h12 : Disjoint E1 E2 := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hω1 hω2
+    exact hE2sub hω2 hω1
+  have h13 : Disjoint E1 E3 := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hω1 hω3
+    exact hω3 (Or.inl hω1)
+  have h23 : Disjoint E2 E3 := by
+    refine Set.disjoint_left.2 ?_
+    intro ω hω2 hω3
+    exact hω3 (Or.inr hω2)
+  have hunion_real : P.real (E1 ∪ E2 : Set Ω) = p2 := by
+    rw [Measure.real, measure_union h12 hE2, ENNReal.toReal_add (measure_ne_top P E1)
+      (measure_ne_top P E2)]
+    have hE1real' : (P E1).toReal = p1 := by
+      simpa [Measure.real] using hE1real
+    have hE2real' : (P E2).toReal = p2 - p1 := by
+      simpa [Measure.real] using hE2real
+    rw [hE1real', hE2real']
+    ring
+  have hE3real : P.real E3 = 1 - p2 := by
+    rw [show E3 = (E1 ∪ E2 : Set Ω)ᶜ by rfl, probReal_compl_eq_one_sub (μ := P) (hE1.union hE2),
+      hunion_real]
+  exact ⟨p1, p2, s, b, a, E1, E2, E3, hp1, hp2, hE1, hE2, hE3, h12, h13, h23,
+    hE1real, hE2real, hE3real, hs, hspos, hbpos, hbsmall, hAplus, hapos, halarge, hline⟩
+
+end Probability
+
 end DiscreteFrontHalf
 
 section Positions
