@@ -1,4 +1,5 @@
 import Formalization.AesSubmodularity.Bridge
+import Mathlib.Analysis.Convex.Continuous
 import Mathlib.Analysis.Convex.Deriv
 
 /-!
@@ -162,6 +163,237 @@ theorem exists_M_for_finiteConvex
     simpa [p1, M] using hgoal
 
 end WitnessPreparation
+
+section DiscreteFrontHalf
+
+theorem exists_positive_point_before_one
+    {f : ℝ → ℝ} (hmono : _root_.Monotone f) (h0 : f 0 = 0)
+    (hq : ∃ q : ℝ, q < 1 ∧ 0 < f q) :
+    ∃ p1 : ℝ, p1 ∈ Set.Ioo (0 : ℝ) 1 ∧ 0 < f p1 := by
+  rcases hq with ⟨q, hq1, hqpos⟩
+  refine ⟨q, ?_, hqpos⟩
+  constructor
+  · by_contra hq0
+    have hqle0 : q ≤ 0 := le_of_not_gt hq0
+    have hqf : f q ≤ f 0 := hmono hqle0
+    linarith
+  · exact hq1
+
+/-- The left derivative at an interior point gives a supporting affine line for a convex function
+on `[0,1]`. -/
+theorem supportLine_le_of_convexOn_leftDeriv
+    {f : ℝ → ℝ} (hconv : ConvexOn ℝ (Set.Icc (0 : ℝ) 1) f)
+    {p1 : ℝ} (hp1 : p1 ∈ Set.Ioo (0 : ℝ) 1) :
+    ∀ x ∈ Set.Icc (0 : ℝ) 1,
+      f p1 + derivWithin f (Set.Iio p1) p1 * (x - p1) ≤ f x := by
+  have hp1int : p1 ∈ interior (Set.Icc (0 : ℝ) 1) := by
+    simpa [interior_Icc] using hp1
+  intro x hx
+  rcases lt_trichotomy x p1 with hxp | rfl | hpx
+  · have hslope :
+        slope f x p1 ≤ derivWithin f (Set.Iio p1) p1 :=
+      hconv.slope_le_leftDeriv_of_mem_interior hx hp1int hxp
+    have hslope' :
+        (f p1 - f x) / (p1 - x) ≤ derivWithin f (Set.Iio p1) p1 := by
+      simpa [slope_def_field] using hslope
+    have hden : 0 < p1 - x := sub_pos.mpr hxp
+    have hmul :
+        f p1 - f x ≤ derivWithin f (Set.Iio p1) p1 * (p1 - x) :=
+      (div_le_iff₀ hden).mp hslope'
+    linarith
+  · nlinarith
+  · have hldrdr :
+        derivWithin f (Set.Iio p1) p1 ≤ derivWithin f (Set.Ioi p1) p1 :=
+      hconv.leftDeriv_le_rightDeriv_of_mem_interior hp1int
+    have hright :
+        derivWithin f (Set.Ioi p1) p1 ≤ slope f p1 x :=
+      hconv.rightDeriv_le_slope_of_mem_interior hp1int hx hpx
+    have hslope :
+        derivWithin f (Set.Iio p1) p1 ≤ slope f p1 x :=
+      hldrdr.trans hright
+    have hslope' :
+        derivWithin f (Set.Iio p1) p1 ≤ (f x - f p1) / (x - p1) := by
+      simpa [slope_def_field] using hslope
+    have hden : 0 < x - p1 := sub_pos.mpr hpx
+    have hmul :
+        derivWithin f (Set.Iio p1) p1 * (x - p1) ≤ f x - f p1 :=
+      (le_div_iff₀ hden).mp hslope'
+    linarith
+
+/-- If `f(0)=0` and `f(p₁)>0`, then any supporting slope at the interior point `p₁` must be
+strictly positive. -/
+theorem leftDeriv_pos_of_convexOn_pos_before_one
+    {f : ℝ → ℝ} (hconv : ConvexOn ℝ (Set.Icc (0 : ℝ) 1) f)
+    (h0 : f 0 = 0) {p1 : ℝ} (hp1 : p1 ∈ Set.Ioo (0 : ℝ) 1) (hp1pos : 0 < f p1) :
+    0 < derivWithin f (Set.Iio p1) p1 := by
+  have hp1int : p1 ∈ interior (Set.Icc (0 : ℝ) 1) := by
+    simpa [interior_Icc] using hp1
+  have hslope :
+      slope f 0 p1 ≤ derivWithin f (Set.Iio p1) p1 :=
+    hconv.slope_le_leftDeriv_of_mem_interior (by simp) hp1int hp1.1
+  have hslopepos : 0 < slope f 0 p1 := by
+    rw [slope_def_field, h0]
+    have hnum : 0 < f p1 - 0 := by simpa using hp1pos
+    have hden : 0 < p1 - 0 := sub_pos.mpr hp1.1
+    exact div_pos hnum hden
+  exact lt_of_lt_of_le hslopepos hslope
+
+/-- A convex function that is positive at an interior point stays within one copy of its value on
+some sufficiently small interval to the right. This is the discrete `p₂` choice used in the
+finite convex front half. -/
+theorem exists_right_point_with_increment_lt_value
+    {f : ℝ → ℝ} (hconv : ConvexOn ℝ (Set.Icc (0 : ℝ) 1) f)
+    {p1 : ℝ} (hp1 : p1 ∈ Set.Ioo (0 : ℝ) 1) (hp1pos : 0 < f p1) :
+    ∃ p2 : ℝ, p2 ∈ Set.Ioo p1 1 ∧ f p2 - f p1 < f p1 := by
+  have hp1int : p1 ∈ interior (Set.Icc (0 : ℝ) 1) := by
+    simpa [interior_Icc] using hp1
+  have hcontWithin : ContinuousWithinAt f (interior (Set.Icc (0 : ℝ) 1)) p1 :=
+    hconv.continuousOn_interior p1 hp1int
+  have hcont : ContinuousAt f p1 := hcontWithin.continuousAt <| by
+    simpa [interior_Icc] using Ioo_mem_nhds hp1.1 hp1.2
+  obtain ⟨δ, hδpos, hδ⟩ := Metric.continuousAt_iff.mp hcont (f p1) hp1pos
+  let η : ℝ := min (δ / 2) ((1 - p1) / 2)
+  have hηpos : 0 < η := by
+    dsimp [η]
+    refine lt_min ?_ ?_
+    · positivity
+    · have h1p1 : 0 < (1 - p1) / 2 := by nlinarith [hp1.2]
+      exact h1p1
+  refine ⟨p1 + η, ?_, ?_⟩
+  · dsimp [η]
+    constructor
+    · linarith
+    · have hηle : η ≤ (1 - p1) / 2 := by
+        dsimp [η]
+        exact min_le_right _ _
+      linarith
+  · have hηnonneg : 0 ≤ η := le_of_lt hηpos
+    have hηltδ : η < δ := by
+      have hηle : η ≤ δ / 2 := by
+        dsimp [η]
+        exact min_le_left _ _
+      linarith
+    have hdist : dist (p1 + η) p1 < δ := by
+      rw [Real.dist_eq]
+      have hsub : (p1 + η) - p1 = η := by ring
+      rw [hsub, abs_of_nonneg hηnonneg]
+      exact hηltδ
+    have hclose : dist (f (p1 + η)) (f p1) < f p1 := hδ hdist
+    have habs : |f (p1 + η) - f p1| < f p1 := by
+      simpa [Real.dist_eq, sub_eq_add_neg, add_comm, add_left_comm, add_assoc] using hclose
+    exact (abs_lt.mp habs).2
+
+/-- Given `A > B`, one can choose a small positive `b` that simultaneously stays below the
+support-line bound and preserves the strict sign of `A - B + bC`. -/
+theorem exists_small_b_for_discrete_finiteConvex
+    {A B C s v w : ℝ} (hAB : B < A) (hs : 0 < s) (hv : 0 < v) (hw : 0 < w) :
+    ∃ b : ℝ, 0 < b ∧ b < s * (v + w) ∧ 0 < A - B + b * C := by
+  let b1 : ℝ := s * (v + w) / 2
+  let b2 : ℝ := (A - B) / (2 * (|C| + 1))
+  let b : ℝ := min b1 b2
+  have hABpos : 0 < A - B := by linarith
+  have hb1pos : 0 < b1 := by
+    dsimp [b1]
+    positivity
+  have hb2pos : 0 < b2 := by
+    dsimp [b2]
+    positivity
+  have hbpos : 0 < b := by
+    dsimp [b]
+    exact lt_min hb1pos hb2pos
+  refine ⟨b, hbpos, ?_, ?_⟩
+  · have hb1 : b ≤ b1 := by
+      dsimp [b]
+      exact min_le_left _ _
+    have hvw : 0 < v + w := by linarith
+    dsimp [b1] at hb1 ⊢
+    nlinarith
+  · have hb2 : b ≤ b2 := by
+      dsimp [b]
+      exact min_le_right _ _
+    have hmul1 : b * |C| ≤ b * (|C| + 1) := by
+      nlinarith [le_of_lt hbpos, abs_nonneg C]
+    have hmul2 : b * (|C| + 1) ≤ b2 * (|C| + 1) := by
+      have hfac : 0 ≤ |C| + 1 := by positivity
+      nlinarith
+    have hmul3 : b2 * (|C| + 1) = (A - B) / 2 := by
+      unfold b2
+      field_simp
+    have hAbs : b * |C| ≤ (A - B) / 2 := by
+      exact le_trans hmul1 (by simpa [hmul3] using hmul2)
+    have hCbound : -(b * |C|) ≤ b * C := by
+      have := mul_le_mul_of_nonneg_left (neg_abs_le C) (le_of_lt hbpos)
+      simpa [neg_mul, mul_comm, mul_left_comm, mul_assoc] using this
+    nlinarith
+
+/-- Choosing `a` larger than the explicit affine-threshold term is always possible. -/
+theorem exists_large_a_for_discrete_finiteConvex
+    {u v w s b : ℝ} :
+    ∃ a : ℝ, 0 < a ∧ (u + v + w) * s + v * b / (v + w) < a := by
+  let T : ℝ := (u + v + w) * s + v * b / (v + w)
+  refine ⟨max 1 T + 1, ?_, ?_⟩
+  · dsimp [T]
+    linarith [le_max_left (1 : ℝ) T]
+  · dsimp [T]
+    linarith [le_max_right (1 : ℝ) T]
+
+/-- Discrete front-half data for the finite convex lemma. Starting only from convexity,
+monotonicity, normalization `f 0 = 0`, and positivity at some level before `1`, we can choose an
+interior support point `p₁`, a nearby right point `p₂`, a positive support slope `s`, and
+parameters `b,a` satisfying the manuscript inequalities for the shorter `p₀ = 0` route. -/
+theorem exists_discrete_front_half_data_of_convex_pos_before_one
+    {f : ℝ → ℝ} (hmono : _root_.Monotone f)
+    (hconv : ConvexOn ℝ (Set.Icc (0 : ℝ) 1) f) (h0 : f 0 = 0)
+    (hq : ∃ q : ℝ, q < 1 ∧ 0 < f q) :
+    ∃ p1 p2 s b a : ℝ,
+      p1 ∈ Set.Ioo (0 : ℝ) 1 ∧
+      p2 ∈ Set.Ioo p1 1 ∧
+      s = derivWithin f (Set.Iio p1) p1 ∧
+      0 < s ∧
+      0 < b ∧
+      b < s * (1 - p1) ∧
+      0 < f p1 - (f p2 - f p1) + b * (2 * (p2 - p1) / (1 - p1) - p2) ∧
+      0 < a ∧
+      s + (p2 - p1) * b / (1 - p1) < a ∧
+      (∀ x ∈ Set.Icc (0 : ℝ) 1, f p1 + s * (x - p1) ≤ f x) := by
+  obtain ⟨p1, hp1, hp1pos⟩ := exists_positive_point_before_one hmono h0 hq
+  obtain ⟨p2, hp2, hp2close⟩ :=
+    exists_right_point_with_increment_lt_value hconv hp1 hp1pos
+  let s : ℝ := derivWithin f (Set.Iio p1) p1
+  have hs : s = derivWithin f (Set.Iio p1) p1 := rfl
+  have hspos : 0 < s := by
+    dsimp [s]
+    exact leftDeriv_pos_of_convexOn_pos_before_one hconv h0 hp1 hp1pos
+  have hline : ∀ x ∈ Set.Icc (0 : ℝ) 1, f p1 + s * (x - p1) ≤ f x := by
+    dsimp [s]
+    exact supportLine_le_of_convexOn_leftDeriv hconv hp1
+  have hp1lt1 : p1 < 1 := hp1.2
+  have hp1gt0 : 0 < p1 := hp1.1
+  have hv : 0 < p2 - p1 := sub_pos.mpr hp2.1
+  have hw : 0 < 1 - p2 := sub_pos.mpr hp2.2
+  have h1p1 : 0 < 1 - p1 := by linarith
+  let A : ℝ := f p1 - f 0
+  let B : ℝ := f p2 - f p1
+  let C : ℝ := 2 * (p2 - p1) / (1 - p1) - p2
+  obtain ⟨b, hbpos, hbsmall, hAplus⟩ :=
+    exists_small_b_for_discrete_finiteConvex
+      (A := A) (B := B) (C := C) (s := s) (v := p2 - p1) (w := 1 - p2)
+      (by
+        dsimp [A, B]
+        linarith [hp2close])
+      hspos hv hw
+  obtain ⟨a, hapos, halarge⟩ :=
+    exists_large_a_for_discrete_finiteConvex
+      (u := p1) (v := p2 - p1) (w := 1 - p2) (s := s) (b := b)
+  refine ⟨p1, p2, s, b, a, hp1, hp2, hs, hspos, hbpos, ?_, ?_, hapos, ?_, hline⟩
+  · have hsum : (p2 - p1) + (1 - p2) = 1 - p1 := by ring
+    simpa [hsum] using hbsmall
+  · dsimp [A, B, C] at hAplus ⊢
+    simpa [h0] using hAplus
+  · have hsum : p1 + (p2 - p1) + (1 - p2) = 1 := by ring
+    simpa [hsum] using halarge
+
+end DiscreteFrontHalf
 
 section Positions
 
