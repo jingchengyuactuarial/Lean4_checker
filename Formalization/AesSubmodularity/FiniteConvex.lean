@@ -1,4 +1,5 @@
 import Formalization.AesSubmodularity.Bridge
+import Mathlib.Analysis.Convex.Deriv
 
 /-!
 # Finite Convex AES Counterexample Skeleton
@@ -94,6 +95,73 @@ def finiteSupportLine (g : Level → ℝ) (h r : ℝ) (hh : 0 < h) (h3 : 3 * h <
   ring_nf
 
 end SupportLine
+
+section WitnessPreparation
+
+theorem finiteSupportLine_le_of_convexOn_hasDerivAt
+    {f : ℝ → ℝ} {h r : ℝ} (hh : 0 < h) (h3 : 3 * h < 1)
+    (hconv : ConvexOn ℝ (Set.Icc (0 : ℝ) 1) f)
+    (hderiv : HasDerivAt f r (1 - 2 * h)) :
+    ∀ p : Level, finiteSupportLine (fun q : Level => f q) h r hh h3 p ≤ f p := by
+  intro p
+  let q : ℝ := 1 - 2 * h
+  have hqmem : q ∈ Set.Icc (0 : ℝ) 1 := by
+    dsimp [q]
+    constructor <;> linarith
+  rcases lt_trichotomy (p : ℝ) q with hpq | hpq | hqp
+  · have hSlope : slope f (p : ℝ) q ≤ r := by
+      simpa [q] using
+        hconv.slope_le_of_hasDerivAt (x := (p : ℝ)) (y := q) p.2 hqmem hpq hderiv
+    have hslope' : (f q - f p) / (q - (p : ℝ)) ≤ r := by
+      simpa [slope_def_field] using hSlope
+    have hden : 0 < q - (p : ℝ) := sub_pos.mpr hpq
+    have hmul : f q - f p ≤ r * (q - (p : ℝ)) := (div_le_iff₀ hden).mp hslope'
+    have hline : f q + r * ((p : ℝ) - q) ≤ f p := by
+      linarith
+    simpa [finiteSupportLine, q] using hline
+  · have hline : f q + r * ((p : ℝ) - q) = f p := by
+      simp [hpq]
+    simpa [finiteSupportLine, q] using le_of_eq hline
+  · have hSlope : r ≤ slope f q (p : ℝ) := by
+      simpa [q] using
+        hconv.le_slope_of_hasDerivAt (x := q) (y := (p : ℝ)) hqmem p.2 hqp hderiv
+    have hslope' : r ≤ (f p - f q) / ((p : ℝ) - q) := by
+      simpa [slope_def_field] using hSlope
+    have hden : 0 < (p : ℝ) - q := sub_pos.mpr hqp
+    have hmul : r * ((p : ℝ) - q) ≤ f p - f q := (le_div_iff₀ hden).mp hslope'
+    have hline : f q + r * ((p : ℝ) - q) ≤ f p := by
+      linarith
+    simpa [finiteSupportLine, q] using hline
+
+theorem exists_M_for_finiteConvex
+    {g : Level → ℝ} {h r u a b : ℝ} (hh : 0 < h) (h3 : 3 * h < 1) :
+    ∃ M : ℝ,
+      a < M ∧
+        (-(1 - 3 * h) * M - h * (a + b)) - finiteSupportLine g h r hh h3 0 <
+          -(3 * u / 4) - g (finiteLevel1 h hh h3) := by
+  let p1 : Level := finiteLevel1 h hh h3
+  let B : ℝ :=
+    (3 * u / 4 + g p1 - h * (a + b) - finiteSupportLine g h r hh h3 0) / (1 - 3 * h)
+  let M : ℝ := max a B + 1
+  refine ⟨M, ?_, ?_⟩
+  · dsimp [M]
+    linarith [le_max_left a B]
+  · have hden : 0 < 1 - 3 * h := by linarith
+    have hBlt : B < M := by
+      dsimp [M]
+      have hBle : B ≤ max a B := le_max_right a B
+      linarith
+    have hmul :
+        3 * u / 4 + g p1 - h * (a + b) - finiteSupportLine g h r hh h3 0 <
+          M * (1 - 3 * h) := by
+      exact (div_lt_iff₀ hden).mp hBlt
+    have hgoal :
+        (-(1 - 3 * h) * M - h * (a + b)) - finiteSupportLine g h r hh h3 0 <
+          -(3 * u / 4) - g p1 := by
+      linarith
+    simpa [p1, M] using hgoal
+
+end WitnessPreparation
 
 section Positions
 
@@ -3159,6 +3227,36 @@ theorem not_submodular_AES_of_finiteConvex_witness
   exact not_submodular_AES_of_finiteConvex_XYbounds (P := P)
     hE0 hE1 hE2 h01 h02 h12 hh h3 hu hbu
     hE0mass hE1mass hE2mass haM hbM ha hb hba.le hgnonneg hX hY hsmall
+
+/-- A witness theorem with the affine support line and the large-`M` choice produced internally
+from a convex real-valued penalty function. This isolates two Lean-friendly parts of the front
+half of the manuscript proof: tangent-line support and the archimedean choice of `M`. -/
+theorem not_submodular_AES_of_finiteConvex_real_witness
+    {f : ℝ → ℝ} {h r u a b : ℝ} {E0 E1 E2 : Set Ω}
+    (hE0 : MeasurableSet E0) (hE1 : MeasurableSet E1) (hE2 : MeasurableSet E2)
+    (h01 : Disjoint E0 E1) (h02 : Disjoint E0 E2) (h12 : Disjoint E1 E2)
+    (hh : 0 < h) (h3 : 3 * h < 1) (hr : 0 ≤ r) (hu : u = r * h)
+    (hE0mass : P.real E0 = 1 - 3 * h) (hE1mass : P.real E1 = h) (hE2mass : P.real E2 = h)
+    (hba : b < a) (ha : 0 < a) (hb : 0 < b)
+    (habu : a + b = 15 * u / 2) (hbu : b = 3 * u / 2)
+    (hconv : ConvexOn ℝ (Set.Icc (0 : ℝ) 1) f)
+    (hderiv : HasDerivAt f r (1 - 2 * h))
+    (hnonneg : ∀ x ∈ Set.Icc (0 : ℝ) 1, 0 ≤ f x)
+    (hsmall :
+      f (finiteLevel0 h hh h3) + f (finiteLevel2 h hh h3) -
+        2 * f (finiteLevel1 h hh h3) < r * h / 2) :
+    ¬ Submodular (AES P (fun p : Level => f p)) := by
+  obtain ⟨M, haM, hMlarge⟩ := exists_M_for_finiteConvex
+    (g := fun p : Level => f p) (h := h) (r := r) (u := u) (a := a) (b := b) hh h3
+  have hline : ∀ p : Level, finiteSupportLine (fun q : Level => f q) h r hh h3 p ≤ f p :=
+    finiteSupportLine_le_of_convexOn_hasDerivAt (hh := hh) (h3 := h3) hconv hderiv
+  have hgnonneg : ∀ p : Level, 0 ≤ f p := by
+    intro p
+    exact hnonneg p p.2
+  exact not_submodular_AES_of_finiteConvex_witness (P := P)
+    (g := fun p : Level => f p)
+    hE0 hE1 hE2 h01 h02 h12 hh h3 hr hu
+    hE0mass hE1mass hE2mass hba haM ha hb habu hbu hline hgnonneg hMlarge hsmall
 
 end Contradiction
 
