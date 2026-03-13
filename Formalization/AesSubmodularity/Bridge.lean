@@ -256,6 +256,12 @@ indicator-level `ES` formula. -/
 def indicatorAESClosedForm (g : Level → ℝ) (c t : ℝ) : ℝ :=
   sSup (Set.range fun p : Level => indicatorESClosedForm c t p - g p)
 
+/-- Extended-valued indicator-level AES envelope, where levels carrying infinite penalty are
+excluded from the supremum. This is the indicator closed form corresponding to `AESExt`. -/
+def indicatorAESExtClosedForm (g : Level → ENNReal) (c t : ℝ) : ℝ :=
+  sSup (Set.range fun p : {p : Level // p ∈ FinitePenaltyLevels g} =>
+    indicatorESClosedForm c t p.1 - ENNReal.toReal (g p.1))
+
 omit [IsProbabilityMeasure P] in
 private theorem scaledIndicatorLaw_apply_Iic (c : ℝ) {A : Set Ω} (x : ℝ) :
     scaledIndicatorLaw P c A (Set.Iic x) =
@@ -798,6 +804,24 @@ theorem AES_scaledIndicatorRV_eq_indicatorAESClosedForm (g : Level → ℝ) (c :
       simpa [ES] using ES_scaledIndicatorRV_eq_indicatorESClosedForm
         (P := P) z c hc hA hA_pos⟩
 
+/-- Closed form of `AESExt` on an indicator position `c 1_A`. -/
+theorem AESExt_scaledIndicatorRV_eq_indicatorAESExtClosedForm
+    (g : Level → ENNReal) (c : ℝ) (hc : 0 < c)
+    {A : Set Ω} (hA : MeasurableSet A) (hA_pos : P A ≠ 0) :
+    AESExt P g (scaledIndicatorRV P c A hA) = indicatorAESExtClosedForm g c (P.real A) := by
+  unfold AESExt ESgExt distESgExt indicatorAESExtClosedForm
+  congr 1
+  ext y
+  constructor
+  · rintro ⟨z, rfl⟩
+    exact ⟨z, by
+      simpa [ES] using (ES_scaledIndicatorRV_eq_indicatorESClosedForm
+        (P := P) z.1 c hc hA hA_pos).symm⟩
+  · rintro ⟨z, rfl⟩
+    exact ⟨z, by
+      simpa [ES] using ES_scaledIndicatorRV_eq_indicatorESClosedForm
+        (P := P) z.1 c hc hA hA_pos⟩
+
 /-- Closed form of `ES` on the `L^\infty` indicator model. -/
 theorem ESLinf_linfIndicator_eq_indicatorESClosedForm (p : Level) (c : ℝ) (hc : 0 < c)
     {A : Set Ω} (hA : MeasurableSet A) (hA_pos : P A ≠ 0) :
@@ -923,10 +947,19 @@ theorem decreasingIncrements_profileFromProbability_scaledIndicatorSetFunction
 abbrev indicatorAESSetFunction (g : Level → ℝ) (c : ℝ) : Set Ω → ℝ :=
   scaledIndicatorSetFunction P (AES P g) c
 
+/-- The `AESExt`-specific indicator set function. -/
+abbrev indicatorAESExtSetFunction (g : Level → ENNReal) (c : ℝ) : Set Ω → ℝ :=
+  scaledIndicatorSetFunction P (AESExt P g) c
+
 /-- The one-dimensional profile extracted from AES on indicator positions. -/
 noncomputable def indicatorAESProbabilityProfile
     (hsplit : HasFullEventSplitting P) (g : Level → ℝ) (c : ℝ) : ℝ → ℝ :=
   profileFromProbability P hsplit (indicatorAESSetFunction P g c)
+
+/-- The one-dimensional profile extracted from `AESExt` on indicator positions. -/
+noncomputable def indicatorAESExtProbabilityProfile
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) (c : ℝ) : ℝ → ℝ :=
+  profileFromProbability P hsplit (indicatorAESExtSetFunction P g c)
 
 /-- If `AES` is submodular, then its indicator probability profile has decreasing increments. -/
 theorem decreasingIncrements_indicatorAESProbabilityProfile
@@ -936,6 +969,15 @@ theorem decreasingIncrements_indicatorAESProbabilityProfile
   simpa [indicatorAESProbabilityProfile, indicatorAESSetFunction] using
     (decreasingIncrements_profileFromProbability_scaledIndicatorSetFunction
       (P := P) (ρ := AES P g) hsplit hsub (AES_lawInvariant (P := P) g) hc)
+
+/-- If `AESExt` is submodular, then its indicator probability profile has decreasing increments. -/
+theorem decreasingIncrements_indicatorAESExtProbabilityProfile
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) {c : ℝ} (hc : 0 ≤ c)
+    (hsub : Submodular (AESExt P g)) :
+    DecreasingIncrements (indicatorAESExtProbabilityProfile P hsplit g c) := by
+  simpa [indicatorAESExtProbabilityProfile, indicatorAESExtSetFunction] using
+    (decreasingIncrements_profileFromProbability_scaledIndicatorSetFunction
+      (P := P) (ρ := AESExt P g) hsplit hsub (AESExt_lawInvariant (P := P) g) hc)
 
 /-- The indicator probability profile extracted from a submodular `AES` satisfies the midpoint
 concavity inequality on `[0,1]`. This is the first concavity consequence used in the final
@@ -949,6 +991,18 @@ theorem midpoint_ge_average_indicatorAESProbabilityProfile
         (indicatorAESProbabilityProfile P hsplit g c y) := by
   exact midpoint_ge_average_of_decreasingIncrements
     (decreasingIncrements_indicatorAESProbabilityProfile (P := P) hsplit g hc hsub) hx hy
+
+/-- The indicator probability profile extracted from a submodular `AESExt` satisfies the midpoint
+concavity inequality on `[0,1]`. -/
+theorem midpoint_ge_average_indicatorAESExtProbabilityProfile
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) {c : ℝ} (hc : 0 ≤ c)
+    (hsub : Submodular (AESExt P g)) {x y : ℝ}
+    (hx : x ∈ Set.Icc (0 : ℝ) 1) (hy : y ∈ Set.Icc (0 : ℝ) 1) :
+    indicatorAESExtProbabilityProfile P hsplit g c (midpoint ℝ x y) ≥
+      midpoint ℝ (indicatorAESExtProbabilityProfile P hsplit g c x)
+        (indicatorAESExtProbabilityProfile P hsplit g c y) := by
+  exact midpoint_ge_average_of_decreasingIncrements
+    (decreasingIncrements_indicatorAESExtProbabilityProfile (P := P) hsplit g hc hsub) hx hy
 
 /-- On strictly positive masses, the chosen AES indicator profile agrees with the closed-form
 envelope already computed for indicator positions. -/
@@ -975,6 +1029,31 @@ theorem indicatorAESProbabilityProfile_eq_indicatorAESClosedForm
   simpa [indicatorAESSetFunction, hAreal] using
     AES_scaledIndicatorRV_eq_indicatorAESClosedForm (P := P) g c hc hA hA_pos
 
+/-- On strictly positive masses, the chosen `AESExt` indicator profile agrees with the
+extended-valued closed-form envelope computed for indicator positions. -/
+theorem indicatorAESExtProbabilityProfile_eq_indicatorAESExtClosedForm
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) (c : ℝ) (hc : 0 < c)
+    {t : ℝ} (ht0 : 0 < t) (ht1 : t ≤ 1) :
+    indicatorAESExtProbabilityProfile P hsplit g c t = indicatorAESExtClosedForm g c t := by
+  let A : Set Ω := Classical.choose (exists_measurableSet_measureReal_eq
+    (P := P) hsplit (le_of_lt ht0) ht1)
+  have hA : MeasurableSet A :=
+    (Classical.choose_spec (exists_measurableSet_measureReal_eq
+      (P := P) hsplit (le_of_lt ht0) ht1)).1
+  have hAreal : P.real A = t :=
+    (Classical.choose_spec (exists_measurableSet_measureReal_eq
+      (P := P) hsplit (le_of_lt ht0) ht1)).2
+  have hA_pos : P A ≠ 0 := by
+    intro hPA
+    have hreal0 : P.real A = 0 := (measureReal_eq_zero_iff (μ := P)).mpr hPA
+    linarith [hAreal, ht0]
+  rw [indicatorAESExtProbabilityProfile, profileFromProbability_eq (P := P) hsplit
+    (indicatorAESExtSetFunction P g c) (le_of_lt ht0) ht1]
+  change scaledIndicatorSetFunction P (AESExt P g) c A = indicatorAESExtClosedForm g c t
+  rw [scaledIndicatorSetFunction_apply (P := P) (ρ := AESExt P g) c hA]
+  simpa [indicatorAESExtSetFunction, hAreal] using
+    AESExt_scaledIndicatorRV_eq_indicatorAESExtClosedForm (P := P) g c hc hA hA_pos
+
 /-- At the origin, the AES indicator probability profile vanishes under the normalized penalty
 assumptions `g(0) = 0` and `g ≥ 0`. -/
 theorem indicatorAESProbabilityProfile_zero_eq_zero
@@ -997,6 +1076,30 @@ theorem indicatorAESProbabilityProfile_zero_eq_zero
       (scaledIndicatorSetFunction_apply (P := P) (ρ := AES P g) c (A := ∅) MeasurableSet.empty)
   rw [← hempty, happly, scaledIndicatorRV_empty_eq_zero]
   exact AES_zero_eq_zero (P := P) g hg0 hgnonneg
+
+/-- At the origin, the `AESExt` indicator probability profile vanishes under the normalized
+assumption `g(0) = 0`. -/
+theorem indicatorAESExtProbabilityProfile_zero_eq_zero
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) (c : ℝ)
+    (hg0 : g 0 = 0) :
+    indicatorAESExtProbabilityProfile P hsplit g c 0 = 0 := by
+  have hprofile :
+      EventProfile P (indicatorAESExtSetFunction P g c)
+        (indicatorAESExtProbabilityProfile P hsplit g c) :=
+    EventProfile.of_dependsOnlyOnProbability (P := P) hsplit
+      (dependsOnlyOnProbability_scaledIndicatorSetFunction (P := P) (ρ := AESExt P g)
+        (AESExt_lawInvariant (P := P) g) c)
+  have hempty :
+      indicatorAESExtSetFunction P g c ∅ = indicatorAESExtProbabilityProfile P hsplit g c 0 := by
+    simpa [indicatorAESExtProbabilityProfile, indicatorAESExtSetFunction, Measure.real] using
+      (hprofile (A := ∅) MeasurableSet.empty)
+  have happly :
+      indicatorAESExtSetFunction P g c ∅ = AESExt P g (scaledIndicatorRV P c ∅ MeasurableSet.empty) := by
+    simpa [indicatorAESExtSetFunction] using
+      (scaledIndicatorSetFunction_apply (P := P) (ρ := AESExt P g) c
+        (A := ∅) MeasurableSet.empty)
+  rw [← hempty, happly, scaledIndicatorRV_empty_eq_zero]
+  exact AESExt_zero_eq_zero (P := P) g hg0
 
 /-- The two-level test position used in the revised finite-penalty AES argument. -/
 def finiteCounterexampleX (P : Measure Ω) (eps lam : ℝ) (A B C : Set Ω)
@@ -1099,10 +1202,19 @@ theorem law_finiteCounterexample_inf_eq_layeredIndicatorLaw
 appears in the infinite-left AES statement. -/
 def zeroSetReal (g : Level → ℝ) : Set ℝ := {x : ℝ | ∃ p : Level, (p : ℝ) = x ∧ g p = 0}
 
+/-- The real image of the zero set `{p : Level | g p = 0}` for an extended-valued penalty. -/
+def zeroSetExtReal (g : Level → ENNReal) : Set ℝ :=
+  {x : ℝ | ∃ p : Level, (p : ℝ) = x ∧ g p = 0}
+
 /-- Fixed-level eventual largeness near the right endpoint `1`. This is the proof-friendly
 version of the tail penalty condition used in the infinite-left AES argument. -/
 def EventuallyLargeBeforeOne (g : Level → ℝ) (c : ℝ) : Prop :=
   ∃ bar : Level, (bar : ℝ) < 1 ∧ ∀ p : Level, (bar : ℝ) < (p : ℝ) → c < g p
+
+/-- Extended-valued version of `EventuallyLargeBeforeOne`. -/
+def EventuallyLargeBeforeOneExt (g : Level → ENNReal) (c : ℝ) : Prop :=
+  ∃ bar : Level, (bar : ℝ) < 1 ∧
+    ∀ p : Level, (bar : ℝ) < (p : ℝ) → ENNReal.ofReal c < g p
 
 /-- If `p₀` is the least upper bound of the zero set of `g`, then every level strictly above `p₀`
 has strictly positive penalty, provided `g ≥ 0`. -/
@@ -1117,6 +1229,73 @@ theorem positive_of_gt_isLUB_zeroSetReal
     have hq_le : (q : ℝ) ≤ p0 := hupper hq_mem
     linarith
   exact lt_of_le_of_ne (hgnonneg q) (Ne.symm hq_ne)
+
+/-- If `p₀` is the least upper bound of the zero set of an extended-valued penalty, then every
+strictly larger finite level has strictly positive real penalty. -/
+theorem toReal_pos_of_gt_isLUB_zeroSetExtReal
+    (g : Level → ENNReal) {p0 : ℝ} (hsup : IsLUB (zeroSetExtReal g) p0)
+    {q : Level} (hp0q : p0 < (q : ℝ)) (hq_fin : g q < ⊤) :
+    0 < ENNReal.toReal (g q) := by
+  have hq_ne_zero : g q ≠ 0 := by
+    intro hq_zero
+    have hq_mem : (q : ℝ) ∈ zeroSetExtReal g := ⟨q, rfl, hq_zero⟩
+    have hupper : p0 ∈ upperBounds (zeroSetExtReal g) := hsup.1
+    have hq_le : (q : ℝ) ≤ p0 := hupper hq_mem
+    linarith
+  exact ENNReal.toReal_pos hq_ne_zero hq_fin.ne
+
+/-- Every level strictly below the least upper bound of the zero set still carries zero penalty,
+provided the penalty is increasing. -/
+theorem eq_zero_of_lt_isLUB_zeroSetExtReal
+    (g : Level → ENNReal) (hmono : _root_.Monotone g) {p0 : ℝ}
+    (hsup : IsLUB (zeroSetExtReal g) p0) {p : Level} (hpp0 : (p : ℝ) < p0) :
+    g p = 0 := by
+  by_contra hp_ne_zero
+  have hp_upper : p0 ≤ (p : ℝ) := by
+    have hupper_p : (p : ℝ) ∈ upperBounds (zeroSetExtReal g) := by
+      intro x hx
+      rcases hx with ⟨q, hqx, hq_zero⟩
+      by_contra hxp
+      have hp_le_q : p ≤ q := by
+        apply le_of_lt
+        change (p : ℝ) < (q : ℝ)
+        simpa [hqx] using (lt_of_not_ge hxp)
+      have hp_le_hq : g p ≤ g q := hmono hp_le_q
+      rw [hq_zero] at hp_le_hq
+      exact hp_ne_zero (le_antisymm hp_le_hq bot_le)
+    exact hsup.2 hupper_p
+  linarith
+
+/-- A tail witness `bar < 1` can always be enlarged to sit above a prescribed `q₀ < 1` in the
+extended-valued setting. -/
+theorem exists_tailWitnessAbove_of_eventuallyLargeBeforeOneExt
+    (g : Level → ENNReal) {c : ℝ} {q0 : Level} (hq01 : (q0 : ℝ) < 1)
+    (htail : EventuallyLargeBeforeOneExt g c) :
+    ∃ bar : Level, (q0 : ℝ) < (bar : ℝ) ∧ (bar : ℝ) < 1 ∧
+      ∀ p : Level, (bar : ℝ) < (p : ℝ) → ENNReal.ofReal c < g p := by
+  rcases htail with ⟨b, hb1, hbLarge⟩
+  let qmid : Level := ⟨((q0 : ℝ) + 1) / 2, by
+    constructor
+    · have hq0_nonneg : 0 ≤ (q0 : ℝ) := q0.2.1
+      linarith
+    · linarith⟩
+  have hqmid1 : (qmid : ℝ) < 1 := by
+    change (((q0 : ℝ) + 1) / 2) < 1
+    linarith
+  let bar : Level := ⟨max (b : ℝ) (qmid : ℝ), by
+    constructor
+    · exact le_trans b.2.1 (le_max_left _ _)
+    · exact (max_lt_iff.mpr ⟨hb1, hqmid1⟩).le⟩
+  refine ⟨bar, ?_, ?_, ?_⟩
+  · change (q0 : ℝ) < max (b : ℝ) (qmid : ℝ)
+    have hq0qmid : (q0 : ℝ) < (qmid : ℝ) := by
+      change (q0 : ℝ) < ((q0 : ℝ) + 1) / 2
+      linarith
+    exact lt_of_lt_of_le hq0qmid (le_max_right _ _)
+  · change max (b : ℝ) (qmid : ℝ) < 1
+    exact max_lt_iff.mpr ⟨hb1, hqmid1⟩
+  · intro p hp
+    exact hbLarge p (lt_of_le_of_lt (le_max_left _ _) hp)
 
 /-- A tail witness `bar < 1` can always be enlarged to sit above a prescribed `q₀ < 1`, while
 preserving the same eventual lower bound. -/
@@ -1464,6 +1643,69 @@ theorem indicatorAESProbabilityProfile_ratio_ge_at_level
   rw [indicatorAESProbabilityProfile_eq_indicatorAESClosedForm (P := P) hsplit g c hc ht0 ht1]
   exact indicatorAESClosedForm_ratio_ge_at_level (g := g) hc hgnonneg hp
 
+/-- Evaluating the indicator-level `AESExt` closed form at the matching finite level `t = 1 - p`
+yields a pointwise lower bound by `c - g(p)`. -/
+theorem indicatorAESExtClosedForm_ratio_ge_at_level
+    (g : Level → ENNReal) {c : ℝ} (hc : 0 < c) {p : Level}
+    (hp : (p : ℝ) < 1) (hp_fin : p ∈ FinitePenaltyLevels g) :
+    (c - ENNReal.toReal (g p)) / (1 - (p : ℝ)) ≤
+      indicatorAESExtClosedForm g c (1 - (p : ℝ)) / (1 - (p : ℝ)) := by
+  have ht0 : 0 < 1 - (p : ℝ) := sub_pos.mpr hp
+  have hrange :
+      indicatorESClosedForm c (1 - (p : ℝ)) p - ENNReal.toReal (g p) ∈
+        Set.range (fun q : {q : Level // q ∈ FinitePenaltyLevels g} =>
+          indicatorESClosedForm c (1 - (p : ℝ)) q.1 - ENNReal.toReal (g q.1)) := by
+    exact ⟨⟨p, hp_fin⟩, rfl⟩
+  have hsSup :
+      indicatorESClosedForm c (1 - (p : ℝ)) p - ENNReal.toReal (g p) ≤
+        indicatorAESExtClosedForm g c (1 - (p : ℝ)) := by
+    unfold indicatorAESExtClosedForm
+    refine le_csSup ?_ hrange
+    refine ⟨c, ?_⟩
+    rintro _ ⟨q, rfl⟩
+    by_cases hq : (q.1 : ℝ) < 1
+    · have hmin_le : min 1 ((1 - (p : ℝ)) / (1 - (q.1 : ℝ))) ≤ 1 := min_le_left _ _
+      have hmul_le : c * min 1 ((1 - (p : ℝ)) / (1 - (q.1 : ℝ))) ≤ c := by
+        nlinarith [hmin_le, hc]
+      calc
+        indicatorESClosedForm c (1 - (p : ℝ)) q.1 - ENNReal.toReal (g q.1) =
+            c * min 1 ((1 - (p : ℝ)) / (1 - (q.1 : ℝ))) - ENNReal.toReal (g q.1) := by
+          simp [indicatorESClosedForm, hq]
+        _ ≤ c * min 1 ((1 - (p : ℝ)) / (1 - (q.1 : ℝ))) := by
+          have hpen : 0 ≤ ENNReal.toReal (g q.1) := ENNReal.toReal_nonneg
+          linarith
+        _ ≤ c := hmul_le
+    · have hpen : 0 ≤ ENNReal.toReal (g q.1) := ENNReal.toReal_nonneg
+      have hle : c - ENNReal.toReal (g q.1) ≤ c := by
+        linarith
+      simpa [indicatorESClosedForm, hq] using hle
+  have hp_eval : indicatorESClosedForm c (1 - (p : ℝ)) p = c := by
+    have hmin : min 1 ((1 - (p : ℝ)) / (1 - (p : ℝ))) = (1 : ℝ) := by
+      have hden_pos : 0 < 1 - (p : ℝ) := sub_pos.mpr hp
+      have hden_ne : 1 - (p : ℝ) ≠ 0 := ne_of_gt hden_pos
+      rw [div_self hden_ne, min_eq_left le_rfl]
+    simp [indicatorESClosedForm, hp, hmin]
+  have hcore :
+      c - ENNReal.toReal (g p) ≤ indicatorAESExtClosedForm g c (1 - (p : ℝ)) := by
+    simpa [hp_eval] using hsSup
+  have hinv_nonneg : 0 ≤ (1 - (p : ℝ))⁻¹ := by positivity
+  simpa [div_eq_mul_inv] using mul_le_mul_of_nonneg_right hcore hinv_nonneg
+
+/-- Transport the pointwise lower bound at `t = 1 - p` to the chosen `AESExt` indicator
+probability profile. -/
+theorem indicatorAESExtProbabilityProfile_ratio_ge_at_level
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) {c : ℝ}
+    (hc : 0 < c) {p : Level}
+    (hp : (p : ℝ) < 1) (hp_fin : p ∈ FinitePenaltyLevels g) :
+    (c - ENNReal.toReal (g p)) / (1 - (p : ℝ)) ≤
+      indicatorAESExtProbabilityProfile P hsplit g c (1 - (p : ℝ)) / (1 - (p : ℝ)) := by
+  have ht0 : 0 < 1 - (p : ℝ) := sub_pos.mpr hp
+  have ht1 : 1 - (p : ℝ) ≤ 1 := by
+    have hp_nonneg : 0 ≤ (p : ℝ) := p.2.1
+    linarith
+  rw [indicatorAESExtProbabilityProfile_eq_indicatorAESExtClosedForm (P := P) hsplit g c hc ht0 ht1]
+  exact indicatorAESExtClosedForm_ratio_ge_at_level (g := g) hc hp hp_fin
+
 /-- Small-`t` upper bound for the indicator-level AES closed form.
 
 The interval `[0,1]` is split into three regions:
@@ -1639,6 +1881,212 @@ theorem indicatorAESProbabilityProfile_ratio_eventually_le_of_cutoff
   exact indicatorAESClosedForm_ratio_le_of_cutoff (g := g) hc hmono hgnonneg hq0bar hbar1
     hlarge ht0 htbar htgap
 
+/-- Small-`t` upper bound for the indicator-level `AESExt` closed form. -/
+theorem indicatorAESExtClosedForm_le_linear_of_cutoff
+    (g : Level → ENNReal) {c : ℝ} (hc : 0 < c) (hmono : _root_.Monotone g)
+    {q0 bar : Level} (hq0_fin : q0 ∈ FinitePenaltyLevels g)
+    (hq0bar : (q0 : ℝ) < (bar : ℝ)) (hbar1 : (bar : ℝ) < 1)
+    (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → ENNReal.ofReal c < g p)
+    {t : ℝ} (ht0 : 0 < t) (htbar : t < 1 - (bar : ℝ))
+    (htgap :
+      t * (c / (1 - (bar : ℝ)) - c / (1 - (q0 : ℝ))) ≤ ENNReal.toReal (g q0)) :
+    indicatorAESExtClosedForm g c t ≤ (c / (1 - (q0 : ℝ))) * t := by
+  have hq0_lt1 : (q0 : ℝ) < 1 := lt_trans hq0bar hbar1
+  have htarget_nonneg : 0 ≤ (c / (1 - (q0 : ℝ))) * t := by
+    have hden_pos : 0 < 1 - (q0 : ℝ) := sub_pos.mpr hq0_lt1
+    have hdiv_nonneg : 0 ≤ c / (1 - (q0 : ℝ)) := by
+      exact div_nonneg (le_of_lt hc) (le_of_lt hden_pos)
+    nlinarith [hdiv_nonneg, ht0]
+  unfold indicatorAESExtClosedForm
+  refine csSup_le ?_ ?_
+  · exact ⟨indicatorESClosedForm c t q0 - ENNReal.toReal (g q0), ⟨⟨q0, hq0_fin⟩, rfl⟩⟩
+  · intro y hy
+    rcases hy with ⟨q, rfl⟩
+    by_cases hqbar : (q.1 : ℝ) ≤ (bar : ℝ)
+    · have hq_lt1 : (q.1 : ℝ) < 1 := lt_of_le_of_lt hqbar hbar1
+      have htq : t < 1 - (q.1 : ℝ) := by
+        have hden : 1 - (bar : ℝ) ≤ 1 - (q.1 : ℝ) := by linarith
+        exact lt_of_lt_of_le htbar hden
+      have hmin : min 1 (t / (1 - (q.1 : ℝ))) = t / (1 - (q.1 : ℝ)) := by
+        have hratio_lt_one : t / (1 - (q.1 : ℝ)) < 1 := by
+          rw [div_lt_one (sub_pos.mpr hq_lt1)]
+          exact htq
+        exact min_eq_right (le_of_lt hratio_lt_one)
+      have hbranch :
+          indicatorESClosedForm c t q.1 - ENNReal.toReal (g q.1) =
+            c * (t / (1 - (q.1 : ℝ))) - ENNReal.toReal (g q.1) := by
+        simp [indicatorESClosedForm, hq_lt1, hmin]
+      by_cases hqq0 : (q.1 : ℝ) ≤ (q0 : ℝ)
+      · have hfrac : c / (1 - (q.1 : ℝ)) ≤ c / (1 - (q0 : ℝ)) := by
+          refine div_le_div_of_nonneg_left (le_of_lt hc) (sub_pos.mpr hq0_lt1) ?_
+          linarith
+        have hmul :
+            c * (t / (1 - (q.1 : ℝ))) ≤ (c / (1 - (q0 : ℝ))) * t := by
+          have hmul' := mul_le_mul_of_nonneg_right hfrac (le_of_lt ht0)
+          have hrew : c * (t / (1 - (q.1 : ℝ))) = (c / (1 - (q.1 : ℝ))) * t := by ring
+          simpa [hrew] using hmul'
+        calc
+          indicatorESClosedForm c t q.1 - ENNReal.toReal (g q.1) =
+              c * (t / (1 - (q.1 : ℝ))) - ENNReal.toReal (g q.1) := hbranch
+          _ ≤ c * (t / (1 - (q.1 : ℝ))) := by
+            have hpen : 0 ≤ ENNReal.toReal (g q.1) := ENNReal.toReal_nonneg
+            linarith
+          _ ≤ (c / (1 - (q0 : ℝ))) * t := hmul
+      · have hq0q : (q0 : ℝ) < (q.1 : ℝ) := lt_of_not_ge hqq0
+        have hgq0q : g q0 ≤ g q.1 := hmono (le_of_lt hq0q)
+        have hpen_mono : ENNReal.toReal (g q0) ≤ ENNReal.toReal (g q.1) := by
+          exact ENNReal.toReal_mono q.2.ne hgq0q
+        have hfracbar : c / (1 - (q.1 : ℝ)) ≤ c / (1 - (bar : ℝ)) := by
+          refine div_le_div_of_nonneg_left (le_of_lt hc) (sub_pos.mpr hbar1) ?_
+          linarith
+        have hmulbar :
+            c * (t / (1 - (q.1 : ℝ))) ≤ (c / (1 - (bar : ℝ))) * t := by
+          have hmul' := mul_le_mul_of_nonneg_right hfracbar (le_of_lt ht0)
+          have hrew : c * (t / (1 - (q.1 : ℝ))) = (c / (1 - (q.1 : ℝ))) * t := by ring
+          simpa [hrew] using hmul'
+        calc
+          indicatorESClosedForm c t q.1 - ENNReal.toReal (g q.1) =
+              c * (t / (1 - (q.1 : ℝ))) - ENNReal.toReal (g q.1) := hbranch
+          _ ≤ c * (t / (1 - (q.1 : ℝ))) - ENNReal.toReal (g q0) := by linarith
+          _ ≤ (c / (1 - (bar : ℝ))) * t - ENNReal.toReal (g q0) := by linarith
+          _ ≤ (c / (1 - (q0 : ℝ))) * t := by linarith
+    · have hqbar' : (bar : ℝ) < (q.1 : ℝ) := lt_of_not_ge hqbar
+      have htail : ENNReal.ofReal c < g q.1 := hlarge q.1 hqbar'
+      have htail_real : c < ENNReal.toReal (g q.1) := by
+        exact (ENNReal.ofReal_lt_iff_lt_toReal (le_of_lt hc) q.2.ne).1 htail
+      by_cases hq_lt1 : (q.1 : ℝ) < 1
+      · have hmin_le : min 1 (t / (1 - (q.1 : ℝ))) ≤ 1 := min_le_left _ _
+        calc
+          indicatorESClosedForm c t q.1 - ENNReal.toReal (g q.1) =
+              c * min 1 (t / (1 - (q.1 : ℝ))) - ENNReal.toReal (g q.1) := by
+            simp [indicatorESClosedForm, hq_lt1]
+          _ ≤ c - ENNReal.toReal (g q.1) := by nlinarith [hmin_le, hc]
+          _ ≤ 0 := by linarith
+          _ ≤ (c / (1 - (q0 : ℝ))) * t := htarget_nonneg
+      · calc
+          indicatorESClosedForm c t q.1 - ENNReal.toReal (g q.1) = c - ENNReal.toReal (g q.1) := by
+            simp [indicatorESClosedForm, hq_lt1]
+          _ ≤ 0 := by linarith
+          _ ≤ (c / (1 - (q0 : ℝ))) * t := htarget_nonneg
+
+/-- Ratio upper bound corresponding to `indicatorAESExtClosedForm_le_linear_of_cutoff`. -/
+theorem indicatorAESExtClosedForm_ratio_le_of_cutoff
+    (g : Level → ENNReal) {c : ℝ} (hc : 0 < c) (hmono : _root_.Monotone g)
+    {q0 bar : Level} (hq0_fin : q0 ∈ FinitePenaltyLevels g)
+    (hq0bar : (q0 : ℝ) < (bar : ℝ)) (hbar1 : (bar : ℝ) < 1)
+    (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → ENNReal.ofReal c < g p)
+    {t : ℝ} (ht0 : 0 < t) (htbar : t < 1 - (bar : ℝ))
+    (htgap :
+      t * (c / (1 - (bar : ℝ)) - c / (1 - (q0 : ℝ))) ≤ ENNReal.toReal (g q0)) :
+    indicatorAESExtClosedForm g c t / t ≤ c / (1 - (q0 : ℝ)) := by
+  exact (div_le_iff₀ ht0).2 <|
+    indicatorAESExtClosedForm_le_linear_of_cutoff (g := g) hc hmono hq0_fin hq0bar hbar1
+      hlarge ht0 htbar htgap
+
+/-- Eventual small-`t` upper bound for the indicator-level `AESExt` closed form. -/
+theorem indicatorAESExtClosedForm_ratio_eventually_le_of_cutoff
+    (g : Level → ENNReal) {c : ℝ} (hc : 0 < c) (hmono : _root_.Monotone g)
+    {q0 bar : Level} (hq0_fin : q0 ∈ FinitePenaltyLevels g)
+    (hq0bar : (q0 : ℝ) < (bar : ℝ)) (hbar1 : (bar : ℝ) < 1)
+    (hq0pos : 0 < ENNReal.toReal (g q0))
+    (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → ENNReal.ofReal c < g p) :
+    ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+      indicatorAESExtClosedForm g c t / t ≤ c / (1 - (q0 : ℝ)) := by
+  let D : ℝ := c / (1 - (bar : ℝ)) - c / (1 - (q0 : ℝ))
+  have hDpos : 0 < D := by
+    have hfrac_lt : c / (1 - (q0 : ℝ)) < c / (1 - (bar : ℝ)) := by
+      refine div_lt_div_of_pos_left hc (sub_pos.mpr hbar1) ?_
+      linarith
+    dsimp [D]
+    linarith
+  let δ : ℝ := min (1 - (bar : ℝ)) (ENNReal.toReal (g q0) / D)
+  have hδpos : 0 < δ := by
+    refine lt_min ?_ ?_
+    · linarith
+    · exact div_pos hq0pos hDpos
+  have hsmall : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t < δ := by
+    have hset : Set.Iio δ ∈ nhdsWithin (0 : ℝ) (Set.Ioi 0) := by
+      exact
+        (nhdsWithin_le_nhds : nhdsWithin (0 : ℝ) (Set.Ioi 0) ≤ nhds (0 : ℝ))
+          (Iio_mem_nhds hδpos)
+    have hmem : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t ∈ Set.Iio δ := hset
+    exact hmem.mono fun _ ht => ht
+  have hpos : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), 0 < t := by
+    exact self_mem_nhdsWithin
+  filter_upwards [hsmall, hpos] with t htδ ht0
+  have htbar : t < 1 - (bar : ℝ) := lt_of_lt_of_le htδ (min_le_left _ _)
+  have htle :
+      t ≤ ENNReal.toReal (g q0) / D := le_of_lt <| lt_of_lt_of_le htδ (min_le_right _ _)
+  have htgap : t * D ≤ ENNReal.toReal (g q0) := by
+    exact (le_div_iff₀ hDpos).mp htle
+  exact indicatorAESExtClosedForm_ratio_le_of_cutoff (g := g) hc hmono hq0_fin hq0bar hbar1
+    hlarge ht0 htbar htgap
+
+/-- Transport the eventual cutoff upper bound from the closed form to the chosen `AESExt`
+indicator probability profile. -/
+theorem indicatorAESExtProbabilityProfile_ratio_eventually_le_of_cutoff
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) {c : ℝ} (hc : 0 < c)
+    (hmono : _root_.Monotone g) {q0 bar : Level}
+    (hq0_fin : q0 ∈ FinitePenaltyLevels g) (hq0bar : (q0 : ℝ) < (bar : ℝ))
+    (hbar1 : (bar : ℝ) < 1) (hq0pos : 0 < ENNReal.toReal (g q0))
+    (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → ENNReal.ofReal c < g p) :
+    ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+      indicatorAESExtProbabilityProfile P hsplit g c t / t ≤ c / (1 - (q0 : ℝ)) := by
+  let D : ℝ := c / (1 - (bar : ℝ)) - c / (1 - (q0 : ℝ))
+  let δ : ℝ := min (1 - (bar : ℝ)) (ENNReal.toReal (g q0) / D)
+  have hDpos : 0 < D := by
+    have hfrac_lt : c / (1 - (q0 : ℝ)) < c / (1 - (bar : ℝ)) := by
+      refine div_lt_div_of_pos_left hc (sub_pos.mpr hbar1) ?_
+      linarith
+    dsimp [D]
+    linarith
+  have hδpos : 0 < δ := by
+    refine lt_min ?_ ?_
+    · linarith
+    · exact div_pos hq0pos hDpos
+  have hsmall : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t < δ := by
+    have hset : Set.Iio δ ∈ nhdsWithin (0 : ℝ) (Set.Ioi 0) := by
+      exact
+        (nhdsWithin_le_nhds : nhdsWithin (0 : ℝ) (Set.Ioi 0) ≤ nhds (0 : ℝ))
+          (Iio_mem_nhds hδpos)
+    have hmem : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), t ∈ Set.Iio δ := hset
+    exact hmem.mono fun _ ht => ht
+  have hpos : ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0), 0 < t := by
+    exact self_mem_nhdsWithin
+  filter_upwards [hsmall, hpos] with t htδ ht0
+  have htbar : t < 1 - (bar : ℝ) := lt_of_lt_of_le htδ (min_le_left _ _)
+  have ht1 : t ≤ 1 := by
+    have hbar_nonneg : 0 ≤ (bar : ℝ) := bar.2.1
+    linarith
+  rw [indicatorAESExtProbabilityProfile_eq_indicatorAESExtClosedForm (P := P) hsplit g c hc ht0 ht1]
+  have htle :
+      t ≤ ENNReal.toReal (g q0) / D := le_of_lt <| lt_of_lt_of_le htδ (min_le_right _ _)
+  have htgap : t * D ≤ ENNReal.toReal (g q0) := by
+    exact (le_div_iff₀ hDpos).mp htle
+  exact indicatorAESExtClosedForm_ratio_le_of_cutoff (g := g) hc hmono hq0_fin hq0bar hbar1
+    hlarge ht0 htbar htgap
+
+/-- The paper's large-`λ` inequality in the extended-valued setting. -/
+theorem point_ratio_strict_of_lambda_bound_ext
+    (g : Level → ENNReal) {c : ℝ} {q0 p1 : Level}
+    (hq0p1 : (q0 : ℝ) < (p1 : ℝ))
+    (hp1 : (p1 : ℝ) < 1)
+    (hc_large :
+      ENNReal.toReal (g p1) * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) < c) :
+    c / (1 - (q0 : ℝ)) < (c - ENNReal.toReal (g p1)) / (1 - (p1 : ℝ)) := by
+  have hgap_pos : 0 < (p1 : ℝ) - (q0 : ℝ) := sub_pos.mpr hq0p1
+  have hden_pos : 0 < 1 - (q0 : ℝ) := by
+    exact sub_pos.mpr (lt_trans hq0p1 hp1)
+  have hnum_pos : 0 < 1 - (p1 : ℝ) := sub_pos.mpr hp1
+  have hmain :
+      ENNReal.toReal (g p1) * (1 - (q0 : ℝ)) < c * ((p1 : ℝ) - (q0 : ℝ)) := by
+    exact (div_lt_iff₀ hgap_pos).mp hc_large
+  have htarget :
+      c * (1 - (p1 : ℝ)) <
+        (c - ENNReal.toReal (g p1)) * (1 - (q0 : ℝ)) := by
+    linarith
+  exact (div_lt_div_iff₀ hden_pos hnum_pos).2 htarget
+
 /-- The paper's choice of a sufficiently large payoff level `λ` implies the strict pointwise ratio
 gap needed for the infinite-left contradiction. -/
 theorem point_ratio_strict_of_lambda_bound
@@ -1752,6 +2200,162 @@ theorem infiniteLeft_indicatorAES_contradiction_of_midpoint_eventuallyUpper
       indicatorAESProbabilityProfile_ratio_ge_at_level (P := P) hsplit g hc hgnonneg hp1
     exact lt_of_lt_of_le hpoint hlower
   exact not_eventually_le_ratio_nhdsWithin_zero_of_midpoint_above hmid hzero ht1 hratio hupper
+
+/-- Infinite-left contradiction using only the midpoint inequality already derived from
+submodularity, together with a cutoff-based eventual upper bound near the origin, in the
+extended-valued setting. -/
+theorem infiniteLeft_indicatorAESExt_contradiction_of_midpoint_eventuallyUpper
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) {c q0 : ℝ}
+    (hc : 0 < c)
+    (hmid :
+      ∀ ⦃x y : ℝ⦄, x ∈ Set.Icc (0 : ℝ) 1 → y ∈ Set.Icc (0 : ℝ) 1 →
+        indicatorAESExtProbabilityProfile P hsplit g c (midpoint ℝ x y) ≥
+          midpoint ℝ (indicatorAESExtProbabilityProfile P hsplit g c x)
+            (indicatorAESExtProbabilityProfile P hsplit g c y))
+    (hzero : indicatorAESExtProbabilityProfile P hsplit g c 0 = 0)
+    (hupper :
+      ∀ᶠ t in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+        indicatorAESExtProbabilityProfile P hsplit g c t / t ≤ c / (1 - q0))
+    {p1 : Level} (hp1 : (p1 : ℝ) < 1) (hp1_fin : p1 ∈ FinitePenaltyLevels g)
+    (hpoint : c / (1 - q0) < (c - ENNReal.toReal (g p1)) / (1 - (p1 : ℝ))) :
+    False := by
+  have ht1 : 1 - (p1 : ℝ) ∈ Set.Ioc (0 : ℝ) 1 := by
+    constructor
+    · linarith
+    · have hp1_nonneg : 0 ≤ (p1 : ℝ) := p1.2.1
+      linarith
+  have hratio :
+      c / (1 - q0) <
+        indicatorAESExtProbabilityProfile P hsplit g c (1 - (p1 : ℝ)) / (1 - (p1 : ℝ)) := by
+    have hlower := indicatorAESExtProbabilityProfile_ratio_ge_at_level (P := P) hsplit g hc hp1 hp1_fin
+    exact lt_of_lt_of_le hpoint hlower
+  exact not_eventually_le_ratio_nhdsWithin_zero_of_midpoint_above hmid hzero ht1 hratio hupper
+
+/-- `AESExt`-specific midpoint/cutoff contradiction package for the infinite-left case. -/
+theorem infiniteLeft_indicatorAESExt_contradiction_of_submodular_cutoff
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) {c : ℝ}
+    (hc : 0 < c) (hsub : Submodular (AESExt P g)) (hg0 : g 0 = 0)
+    (hmono : _root_.Monotone g) {q0 bar p1 : Level}
+    (hq0_fin : q0 ∈ FinitePenaltyLevels g) (hp1_fin : p1 ∈ FinitePenaltyLevels g)
+    (hq0bar : (q0 : ℝ) < (bar : ℝ)) (hbar1 : (bar : ℝ) < 1)
+    (hq0pos : 0 < ENNReal.toReal (g q0))
+    (hlarge : ∀ p : Level, (bar : ℝ) < (p : ℝ) → ENNReal.ofReal c < g p)
+    (hp1 : (p1 : ℝ) < 1)
+    (hpoint : c / (1 - (q0 : ℝ)) < (c - ENNReal.toReal (g p1)) / (1 - (p1 : ℝ))) :
+    False := by
+  have hmid :
+      ∀ ⦃x y : ℝ⦄, x ∈ Set.Icc (0 : ℝ) 1 → y ∈ Set.Icc (0 : ℝ) 1 →
+        indicatorAESExtProbabilityProfile P hsplit g c (midpoint ℝ x y) ≥
+          midpoint ℝ (indicatorAESExtProbabilityProfile P hsplit g c x)
+            (indicatorAESExtProbabilityProfile P hsplit g c y) := by
+    intro x y hx hy
+    exact midpoint_ge_average_indicatorAESExtProbabilityProfile (P := P) hsplit g
+      (le_of_lt hc) hsub hx hy
+  have hzero := indicatorAESExtProbabilityProfile_zero_eq_zero (P := P) hsplit g c hg0
+  have hupper :=
+    indicatorAESExtProbabilityProfile_ratio_eventually_le_of_cutoff (P := P) hsplit g hc hmono
+      hq0_fin hq0bar hbar1 hq0pos hlarge
+  exact infiniteLeft_indicatorAESExt_contradiction_of_midpoint_eventuallyUpper (P := P) hsplit g
+    hc hmid hzero hupper hp1 hp1_fin hpoint
+
+/-- Under submodularity, an extended-valued penalty with arbitrarily large right tail cannot have
+a finite level strictly above the least upper bound of its zero set. -/
+theorem finitePenaltyLevels_le_of_submodular_AESExt_of_forall_eventuallyLarge_of_isLUB
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) {p0 : ℝ}
+    (hg0 : g 0 = 0) (hsub : Submodular (AESExt P g)) (hmono : _root_.Monotone g)
+    (hsup : IsLUB (zeroSetExtReal g) p0) (hp01 : p0 < 1)
+    (htail : ∀ c : ℝ, EventuallyLargeBeforeOneExt g c)
+    {p1 : Level} (hp1_fin : p1 ∈ FinitePenaltyLevels g) :
+    (p1 : ℝ) ≤ p0 := by
+  by_contra hp1_not_le
+  have hp0p1 : p0 < (p1 : ℝ) := lt_of_not_ge hp1_not_le
+  by_cases hp11 : (p1 : ℝ) < 1
+  · let q0 : Level := ⟨(p0 + (p1 : ℝ)) / 2, by
+      constructor
+      · have hp0_nonneg : 0 ≤ p0 := by
+          have hzero_mem : (0 : ℝ) ∈ zeroSetExtReal g := ⟨0, by simp [hg0]⟩
+          exact hsup.1 hzero_mem
+        linarith
+      · linarith⟩
+    have hp0q0 : p0 < (q0 : ℝ) := by
+      change p0 < (p0 + (p1 : ℝ)) / 2
+      linarith
+    have hq0p1 : (q0 : ℝ) < (p1 : ℝ) := by
+      change (p0 + (p1 : ℝ)) / 2 < (p1 : ℝ)
+      linarith
+    have hq01 : (q0 : ℝ) < 1 := lt_trans hq0p1 hp11
+    have hq0_fin : q0 ∈ FinitePenaltyLevels g := by
+      exact lt_of_le_of_lt (hmono (le_of_lt hq0p1)) hp1_fin
+    have hq0pos :
+        0 < ENNReal.toReal (g q0) :=
+      toReal_pos_of_gt_isLUB_zeroSetExtReal g hsup hp0q0 hq0_fin
+    let c : ℝ :=
+      ENNReal.toReal (g p1) * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) + 1
+    have hc : 0 < c := by
+      have hratio_nonneg :
+          0 ≤ ENNReal.toReal (g p1) * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) := by
+        refine div_nonneg ?_ ?_
+        · exact mul_nonneg ENNReal.toReal_nonneg (by linarith)
+        · linarith
+      dsimp [c]
+      linarith
+    have hc_large :
+        ENNReal.toReal (g p1) * (1 - (q0 : ℝ)) / ((p1 : ℝ) - (q0 : ℝ)) < c := by
+      dsimp [c]
+      linarith
+    obtain ⟨bar, hq0bar, hbar1, hlarge⟩ :=
+      exists_tailWitnessAbove_of_eventuallyLargeBeforeOneExt g hq01 (htail c)
+    have hpoint :=
+      point_ratio_strict_of_lambda_bound_ext (g := g) hq0p1 hp11 hc_large
+    exact infiniteLeft_indicatorAESExt_contradiction_of_submodular_cutoff (P := P) hsplit g hc
+      hsub hg0 hmono hq0_fin hp1_fin hq0bar hbar1 hq0pos hlarge hp11 hpoint
+  · have hp1_eq : (p1 : ℝ) = 1 := by
+      have hp1_le : (p1 : ℝ) ≤ 1 := p1.2.2
+      linarith
+    have htail_top := htail (ENNReal.toReal (g p1) + 1)
+    rcases htail_top with ⟨bar, hbar1, hlarge⟩
+    have hbarp1 : (bar : ℝ) < (p1 : ℝ) := by
+      rw [hp1_eq]
+      exact hbar1
+    have hlarge_p1 :
+        ENNReal.ofReal (ENNReal.toReal (g p1) + 1) < g p1 := hlarge p1 hbarp1
+    have hreal_lt :
+        ENNReal.toReal (g p1) + 1 < ENNReal.toReal (g p1) := by
+      have harg_nonneg : 0 ≤ ENNReal.toReal (g p1) + 1 := by
+        positivity
+      exact (ENNReal.ofReal_lt_iff_lt_toReal harg_nonneg hp1_fin.ne).1 hlarge_p1
+    linarith
+
+/-- Normalized infinite-left collapse theorem for `AESExt`: if the right tail is arbitrarily
+large and the zero set has a strict supremum below `1`, then submodularity forces the penalty to
+be the pure cutoff at that supremum. -/
+theorem AESExt_eq_ES_of_submodular_of_forall_eventuallyLarge_of_isLUB
+    (hsplit : HasFullEventSplitting P) (g : Level → ENNReal) {p0 : ℝ}
+    (hg0 : g 0 = 0) (hsub : Submodular (AESExt P g)) (hmono : _root_.Monotone g)
+    (hsup : IsLUB (zeroSetExtReal g) p0) (hp01 : p0 < 1)
+    (htail : ∀ c : ℝ, EventuallyLargeBeforeOneExt g c)
+    (hESmono : ∀ X : RandomVariable P, _root_.Monotone (ESProfile P X))
+    (hEScont : ∀ X : RandomVariable P, Continuous (ESProfile P X)) :
+    ∃ p0Level : Level, (p0Level : ℝ) = p0 ∧ AESExt P g = fun X => ES P p0Level X := by
+  have hp0_nonneg : 0 ≤ p0 := by
+    have hzero_mem : (0 : ℝ) ∈ zeroSetExtReal g := ⟨0, by simp [hg0]⟩
+    exact hsup.1 hzero_mem
+  let p0Level : Level := ⟨p0, ⟨hp0_nonneg, le_of_lt hp01⟩⟩
+  have hzero : ∀ p : Level, (p : ℝ) < (p0Level : ℝ) → g p = 0 := by
+    intro p hp
+    exact eq_zero_of_lt_isLUB_zeroSetExtReal g hmono hsup hp
+  have htop : ∀ p : Level, (p0Level : ℝ) < (p : ℝ) → g p = ⊤ := by
+    intro p hp
+    have hp_not_fin : ¬ p ∈ FinitePenaltyLevels g := by
+      intro hp_fin
+      have hp_le :=
+        finitePenaltyLevels_le_of_submodular_AESExt_of_forall_eventuallyLarge_of_isLUB
+          (P := P) hsplit g hg0 hsub hmono hsup hp01 htail hp_fin
+      linarith
+    exact le_antisymm le_top (not_lt.mp hp_not_fin)
+  refine ⟨p0Level, rfl, ?_⟩
+  exact AESExt_eq_ES_of_zero_strictBelow_top_strictAbove (P := P) p0Level hg0 hzero htop
+    hESmono hEScont
 
 /-- AES-specific midpoint/cutoff contradiction package for the infinite-left case. -/
 theorem infiniteLeft_indicatorAES_contradiction_of_submodular_cutoff

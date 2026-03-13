@@ -637,6 +637,126 @@ theorem AESExt_eq_ES_of_zero_below_top_above {g : Level → ENNReal}
     eq_zeroThenTopPenalty_of_zero_below_top_above (g := g) p0 hzero htop
   exact AESExt_eq_ES_of_eq_zeroThenTopPenalty (P := P) p0 hg hmono
 
+/-- Strict-cutoff collapse theorem: if the penalty is normalized at `0`, vanishes strictly below
+`p₀`, and is infinite strictly above `p₀`, then `AESExt` reduces to `ES_{p₀}`.
+
+Unlike `AESExt_eq_ES_of_zero_below_top_above`, this statement allows the value at `p₀` itself to
+be arbitrary; the final collapse uses continuity of the `ES` profile to pass from the strict
+sublevels `p < p₀` to the boundary point `p₀`. -/
+theorem AESExt_eq_ES_of_zero_strictBelow_top_strictAbove {g : Level → ENNReal}
+    (p0 : Level) (hg0 : g 0 = 0)
+    (hzero : ∀ p : Level, (p : ℝ) < (p0 : ℝ) → g p = 0)
+    (htop : ∀ p : Level, (p0 : ℝ) < (p : ℝ) → g p = ⊤)
+    (hmono : ∀ X : RandomVariable P, Monotone (ESProfile P X))
+    (hcont : ∀ X : RandomVariable P, Continuous (ESProfile P X)) :
+    AESExt P g = fun X => ES P p0 X := by
+  funext X
+  let S : Set ℝ := Set.range fun p : {p : Level // p ∈ FinitePenaltyLevels g} =>
+    ES P p.1 X - ENNReal.toReal (g p.1)
+  have hS_nonempty : S.Nonempty := by
+    refine ⟨ES P 0 X - ENNReal.toReal (g 0), ?_⟩
+    refine ⟨⟨0, ?_⟩, rfl⟩
+    show g 0 < ⊤
+    simpa [hg0]
+  have hS_upper : ∀ y ∈ S, y ≤ ES P p0 X := by
+    rintro y ⟨p, rfl⟩
+    rcases lt_trichotomy ((p.1 : Level) : ℝ) (p0 : ℝ) with hlt | heq | hgt
+    · have hES : ES P p.1 X ≤ ES P p0 X :=
+        (hmono X) (le_of_lt hlt)
+      have hpen : 0 ≤ ENNReal.toReal (g p.1) := ENNReal.toReal_nonneg
+      linarith
+    · have hpen : 0 ≤ ENNReal.toReal (g p.1) := ENNReal.toReal_nonneg
+      have hpeq : p.1 = p0 := by
+        exact Subtype.ext heq
+      subst hpeq
+      linarith
+    · exfalso
+      have hfinite : g p.1 < ⊤ := p.2
+      rw [htop p.1 hgt] at hfinite
+      exact lt_irrefl _ hfinite
+  have hS_bdd : BddAbove S := ⟨ES P p0 X, hS_upper⟩
+  unfold AESExt ESgExt distESgExt
+  apply le_antisymm
+  · exact csSup_le hS_nonempty hS_upper
+  · by_cases hp0_zero : g p0 = 0
+    · have hp0_fin : p0 ∈ FinitePenaltyLevels g := by
+        show g p0 < ⊤
+        simpa [hp0_zero]
+      refine le_csSup hS_bdd ?_
+      refine ⟨⟨p0, hp0_fin⟩, ?_⟩
+      simp [hp0_zero, ES]
+    · have hp0_pos : 0 < (p0 : ℝ) := by
+        by_contra hp0_nonpos
+        have hp0_eq : (p0 : ℝ) = 0 := by
+          have hp0_ge : 0 ≤ (p0 : ℝ) := p0.2.1
+          linarith
+        have hp0_level_eq : p0 = 0 := Subtype.ext hp0_eq
+        exact hp0_zero <| by simpa [hp0_level_eq] using hg0
+      by_contra hnot
+      have hsup_lt : sSup S < ES P p0 X := lt_of_not_ge hnot
+      let ε : ℝ := (ES P p0 X - sSup S) / 2
+      have hε : 0 < ε := by
+        dsimp [ε]
+        linarith
+      have hcontAt : ContinuousAt (ESProfile P X) p0 := (hcont X).continuousAt
+      rcases Metric.continuousAt_iff.mp hcontAt ε hε with ⟨δ, hδpos, hδ⟩
+      let r : ℝ := (p0 : ℝ) - min (δ / 2) ((p0 : ℝ) / 2)
+      have hr_lt : r < (p0 : ℝ) := by
+        dsimp [r]
+        have hmin_pos : 0 < min (δ / 2) ((p0 : ℝ) / 2) := by
+          refine lt_min ?_ ?_
+          · linarith
+          · linarith
+        linarith
+      have hr_nonneg : 0 ≤ r := by
+        dsimp [r]
+        have hmin_le : min (δ / 2) ((p0 : ℝ) / 2) ≤ (p0 : ℝ) / 2 := min_le_right _ _
+        linarith
+      have hr_le_one : r ≤ 1 := by
+        dsimp [r]
+        linarith [p0.2.2]
+      let q : Level := ⟨r, ⟨hr_nonneg, hr_le_one⟩⟩
+      have hq_lt : (q : ℝ) < (p0 : ℝ) := hr_lt
+      have hdist : dist q p0 < δ := by
+        rw [Subtype.dist_eq, Real.dist_eq]
+        have hmin_nonneg : 0 ≤ min (δ / 2) ((p0 : ℝ) / 2) := by positivity
+        have hmin_lt : min (δ / 2) ((p0 : ℝ) / 2) < δ := by
+          calc
+            min (δ / 2) ((p0 : ℝ) / 2) ≤ δ / 2 := min_le_left _ _
+            _ < δ := by linarith
+        have habs :
+            |(q : ℝ) - (p0 : ℝ)| = min (δ / 2) ((p0 : ℝ) / 2) := by
+          change |r - (p0 : ℝ)| = min (δ / 2) ((p0 : ℝ) / 2)
+          have hsub : r - (p0 : ℝ) = -min (δ / 2) ((p0 : ℝ) / 2) := by
+            dsimp [r]
+            ring
+          rw [hsub, abs_neg, abs_of_nonneg hmin_nonneg]
+        rw [habs]
+        exact hmin_lt
+      have hclose := hδ hdist
+      have habs : |ES P q X - ES P p0 X| < ε := by
+        simpa [ESProfile, Subtype.dist_eq, Real.dist_eq] using hclose
+      have hq_close : ES P p0 X - ε < ES P q X := by
+        have hleft := (abs_lt.mp habs).1
+        linarith
+      have hq_zero : g q = 0 := hzero q hq_lt
+      have hq_fin : q ∈ FinitePenaltyLevels g := by
+        show g q < ⊤
+        simpa [hq_zero]
+      have hq_mem : ES P q X ∈ S := by
+        refine ⟨⟨q, hq_fin⟩, ?_⟩
+        simp [hq_zero]
+      have hq_le : ES P q X ≤ sSup S := le_csSup hS_bdd hq_mem
+      have hmid : ES P p0 X - ε = (ES P p0 X + sSup S) / 2 := by
+        dsimp [ε]
+        ring
+      have hgap : sSup S < ES P p0 X - ε := by
+        rw [hmid]
+        linarith
+      have hq_gt : sSup S < ES P q X := by
+        exact lt_trans hgap hq_close
+      linarith
+
 end
 
 end RiskMeasure

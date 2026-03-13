@@ -6,3 +6,4 @@ import Formalization.RiskMeasure.LawInvariant
 import Formalization.RiskMeasure.Indicators
 import Formalization.RiskMeasure.SetFunctions
 import Formalization.RiskMeasure.Atomless
+import Formalization.RiskMeasure.AtomlessUniform

@@ -1,113 +1,56 @@
-# formalization
+# Lean4_checker
 
-Standalone Lean 4 project for reusable risk-measure foundations, built on top of `mathlib`.
+Lean 4 project for the AES submodularity formalization, with the current public
+snapshot focused on the two AES lemmas that have already been checked and are
+ready to share.
 
-## Current scope
+## Current verified AES results
 
-- abstract axioms for monotone, cash-additive, subadditive, submodular, supermodular,
-  convex, and coherent risk measures;
-- concrete distribution-level and random-variable-level definitions for common risk measures;
-- AES-proof support modules for law invariance, indicator positions, set-function profiles,
-  and stronger atomless splitting hypotheses;
-- a placeholder entry point for the AES submodularity project.
+- Finite-tail convex lemma:
+  the folded-witness formalization is centered in
+  `Formalization/AesSubmodularity/FiniteConvexFolded.lean`, with the current
+  end-to-end theorem
+  `AesSubmodularity.not_submodular_AES_of_convexOn_of_stronglyAtomless`.
+- Infinite-tail collapse lemma:
+  the bridge and collapse formalization is centered in
+  `Formalization/AesSubmodularity/Bridge.lean` and
+  `Formalization/RiskMeasure/Shortfall.lean`, with the current theorem
+  `AesSubmodularity.AESExt_eq_ES_of_submodular_of_forall_eventuallyLarge_of_isLUB`.
 
-## Implemented risk measures
+## Scope of this snapshot
 
-The current risk-measure layer defines:
+This repository snapshot intentionally exposes only the Lean development needed
+for those two verified lemma lines and their supporting risk-measure
+infrastructure. Older draft routes and unverified extensions are not part of
+the current public story.
 
-- `CE` as the generalized-inverse certainty equivalent `ℓ⁻¹(E[ℓ(X)])`;
-- `VaR` from the lower quantile induced by `ProbabilityTheory.cdf`;
-- `ES` as the normalized integral of `VaR` over the tail;
-- `ESg` and `AES` as supremum envelopes of penalized expected shortfall;
-- `OCE` as the infimum envelope `inf_m (m + E[ℓ(X - m)])`;
-- `ShortfallRisk` as the acceptance-threshold version `inf {m | E[ℓ(X-m)] ≤ r}`;
-- distortion / spectral / Choquet risk measures through bundled distortion functions and
-  probability measures on confidence levels;
-- `MAD` as mean absolute deviation around the mean;
-- `median` as the lower median, i.e. the `1/2` quantile;
-- `MMD` as mean median deviation around that median;
-- `Gini` as the Gini mean difference `E |X - X'|`;
-- `variance` by directly reusing `mathlib`'s `Var[X; P]`.
+## Main modules
 
-The current random-variable API works on the subtype of almost-everywhere measurable real-valued
-functions under a fixed probability measure `P`.
-
-Alongside that subtype-based API, the repository now has a thin `L∞` bridge layer in
-`Formalization/RiskMeasure/Linf.lean`, built directly on top of `MeasureTheory.Lp ℝ ∞ μ`,
-`indicatorConstLp`, and `mathlib`'s `NoAtoms`.
-
-For the AES proof specifically, the repository now also isolates:
-
-- law invariance as a standalone property;
-- event indicators and scaled indicators `c 1_A`;
-- probability-profile and decreasing-increments abstractions for set functions;
-- a project-level strong atomless splitting property, since `mathlib`'s `NoAtoms` is weaker than
-  the exact splitting used in the paper proof.
-
-## Library-first notes
-
-The current formalization strategy is to reuse `mathlib` aggressively whenever the abstraction
-already exists, instead of rebuilding parallel APIs inside this repository. In practice this has
-been especially helpful in four places:
-
-- `ProbabilityTheory.IdentDistrib` / `HasLaw` for law-invariance arguments;
-- `ProbabilityTheory.cdf` and related measure-equality lemmas for distribution-level work;
-- `ConvexOn` / `ConcaveOn` / Jensen / `OrderIso` for inverse-function and profile arguments;
-- indicator-function measurability and integral lemmas for positions of the form `c 1_A`.
-
-The main place where `mathlib` currently does not reach the exact AES proof is atomlessness:
-`MeasureTheory.NoAtoms` is available, but it only gives singleton-nullness, not the stronger event
-splitting property `∀ t ≤ P(A), ∃ B ⊆ A, P(B) = t` used in the paper proof.
-
-## Proof-facing bridge files
-
-For proof projects such as AES, the repository now separates reusable risk-measure theory from
-proof-facing bridge lemmas:
-
-- `Formalization/RiskMeasure/...` keeps definitions and pointwise reusable lemmas;
-- `Formalization/<ProofName>/Bridge.lean` stores narrow wrappers, profile-level identities, and
-  reduction lemmas that are mostly useful inside one proof.
-
-This pattern is meant to be reusable for later proof formalizations as well, so that the core API
-does not slowly turn into a collection of one-off theorem wrappers.
-
-## Quick start
-
-```bash
-source $HOME/.elan/env
-lake build
-```
-
-## Current module layout
-
-- `Formalization/RiskMeasure/Axioms.lean`
 - `Formalization/RiskMeasure/RandomVariable.lean`
-- `Formalization/RiskMeasure/Linf.lean`
-- `Formalization/RiskMeasure/CertaintyEquivalent.lean`
 - `Formalization/RiskMeasure/Quantile.lean`
 - `Formalization/RiskMeasure/Shortfall.lean`
-- `Formalization/RiskMeasure/Distortion.lean`
-- `Formalization/RiskMeasure/Deviation.lean`
 - `Formalization/RiskMeasure/LawInvariant.lean`
 - `Formalization/RiskMeasure/Indicators.lean`
 - `Formalization/RiskMeasure/SetFunctions.lean`
 - `Formalization/RiskMeasure/Atomless.lean`
-- `Formalization/RiskMeasure/Common.lean` as a convenience re-export
-- `Formalization/AesSubmodularity/Bridge.lean` for proof-facing bridge lemmas
+- `Formalization/RiskMeasure/AtomlessUniform.lean`
+- `Formalization/AesSubmodularity/Bridge.lean`
+- `Formalization/AesSubmodularity/FiniteConvexFolded.lean`
 - `Formalization/AesSubmodularity.lean`
 
-## References
+## Build
 
-This library is being organized around standard definitions from the risk-measure literature.
-The main starting references are:
+```bash
+source $HOME/.elan/env
+lake build Formalization
+```
 
-- Artzner, Delbaen, Eber, Heath, "Coherent Measures of Risk", *Mathematical Finance*, 1999.
-- Acerbi, Tasche, "On the Coherence of Expected Shortfall", *Journal of Banking & Finance*, 2002.
-- Föllmer, Schied, *Stochastic Finance*, de Gruyter, 4th edition, 2016.
+## Notes
 
-## Significant Contributions
-
-- Jingcheng Yu: project direction, mathematical specification, and target formalization goals.
-- GPT-5.4: standalone Lean package scaffolding, initial risk-measure API design, concrete
-  measure-theoretic implementations for `VaR`, `ES`, `AES`, `ESg`, `MAD`, `median`, `MMD`,
-  integration of `mathlib` variance, README/documentation drafting, and build validation.
+- The finite-tail result currently uses the theorem statement above as the
+  checked Lean endpoint for Lemma 1.
+- The infinite-tail result currently uses the theorem statement above as the
+  checked Lean endpoint for Lemma 2.
+- If the paper statement is later tightened or repackaged, the comparison
+  should be made against these compiled theorems rather than against informal
+  progress notes.
