@@ -24,6 +24,50 @@ for those two verified lemma lines and their supporting risk-measure
 infrastructure. Older draft routes and unverified extensions are not part of
 the current public story.
 
+## Reusable infrastructure already in the repository
+
+The verified AES lemmas sit on top of a reusable risk-measure layer that
+already contains:
+
+- confidence levels in `[0,1]`, random variables, laws, quantiles, `VaR`, and
+  `ES`;
+- shortfall-type envelopes such as `ESg`, `AES`, `OCE`, and `ShortfallRisk`;
+- law invariance, event indicators `c 1_A`, and probability-profile reductions
+  for set functions;
+- stronger atomless splitting tools used to transport folded witnesses from the
+  unit interval to general probability spaces.
+
+## Library-first notes
+
+The formalization strategy is still to reuse `mathlib` whenever the right
+abstraction already exists, instead of rebuilding parallel APIs inside this
+repository. In the current AES development, the most useful pieces have been:
+
+- `IdentDistrib` / law-level arguments for law invariance;
+- `ProbabilityTheory.cdf` and related measure-equality lemmas for
+  distribution-level calculations;
+- `ConvexOn`, one-sided derivatives, and interval-integral tools for the
+  convex-analysis steps;
+- indicator-function measurability and integral lemmas for event-based witness
+  reductions.
+
+The main gap not covered directly by `mathlib` is the stronger splitting form
+of atomlessness used in the paper proof, which is why the project contains the
+dedicated atomless transport layer.
+
+## Proof-facing bridge pattern
+
+The repository separates reusable risk-measure theory from proof-facing bridge
+lemmas:
+
+- `Formalization/RiskMeasure/...` stores definitions and reusable pointwise
+  lemmas;
+- `Formalization/<ProofName>/Bridge.lean` stores narrow wrappers, profile
+  identities, and reduction lemmas that are mostly useful inside one proof.
+
+This keeps the core API from turning into a collection of one-off theorem
+wrappers while still making the main proof route readable.
+
 ## Main modules
 
 - `Formalization/RiskMeasure/RandomVariable.lean`
@@ -54,3 +98,11 @@ lake build Formalization
 - If the paper statement is later tightened or repackaged, the comparison
   should be made against these compiled theorems rather than against informal
   progress notes.
+
+## References
+
+- Artzner, Delbaen, Eber, Heath, "Coherent Measures of Risk", *Mathematical
+  Finance*, 1999.
+- Acerbi, Tasche, "On the Coherence of Expected Shortfall", *Journal of Banking
+  & Finance*, 2002.
+- Föllmer, Schied, *Stochastic Finance*, de Gruyter, 4th edition, 2016.
